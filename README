@@ -1,0 +1,11 @@
+====The training process====
+To choose the graphics card
+export CUDA_VISIBLE_DEVICES=0
+Run training script
+./train_mobilenet.py（mobilenet） or ./train_resnet_67v1c4.py（resnet）
+
+====The detecting process====
+To choose the graphics card
+export CUDA_VISIBLE_DEVICES=1 
+Run training script
+./mtcnn_facenet.py
