@@ -189,7 +189,7 @@ def main(args):
         train_op = facenet.train(total_loss, global_step, args.optimizer, 
             learning_rate, args.moving_average_decay, tf.global_variables())
 
-            tf.contrib.quantize.create_training_graph(input_graph=g)#, quant_delay=2000)
+        tf.contrib.quantize.create_training_graph(input_graph=g)#, quant_delay=2000)
         
         # Create a saver
         saver = tf.train.Saver(max_to_keep=3)
