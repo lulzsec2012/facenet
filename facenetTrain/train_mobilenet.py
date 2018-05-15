@@ -4,6 +4,8 @@
 # 
 # Copyright (c) 2016
 
+# CUDA_VISIBLE_DEVICES="1" python ./train_mobilenet.py
+
 import src.facenet_train as facenet_train
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
@@ -23,14 +25,15 @@ if __name__ == "__main__":
             '--people_per_batch','2700', 
             '--images_per_person', '9',
             '--image_size','67',
-            '--learning_rate','0.06',
+            '--learning_rate','0.005',
             '--random_flip',
             '--lfw_pairs','/mllib/ALG/facenet-tensorflow/pairs.txt',
             '--lfw_dir', '/mllib/ALG/facenet-tensorflow/lfw_67',
             '--lfw_nrof_folds', '2',
             '--no_store_revision_info' ]
     print(argv)
-    print("-----src.facenet_train_sun--------------")
+    print("-----src.facenet_train.parse_arguments--------------")
     args = facenet_train.parse_arguments(argv)
+    print("-----src.facenet_train.main--------------")
     facenet_train.main(args)
-#export CUDA_VISIBLE_DEVICES=0  ./train_mobilenet.py  
+

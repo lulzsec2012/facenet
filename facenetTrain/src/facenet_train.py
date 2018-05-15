@@ -90,8 +90,9 @@ def main(args):
         # Get the paths for the corresponding images
         lfw_paths, actual_issame = lfw.get_paths(os.path.expanduser(args.lfw_dir), pairs, args.lfw_file_ext)
 
-    
-    with tf.Graph().as_default():
+
+    g = tf.Graph()
+    with g.as_default():
         tf.set_random_seed(args.seed)
         global_step = tf.Variable(0, trainable=False)
 
@@ -100,7 +101,7 @@ def main(args):
         
         batch_size_placeholder = tf.placeholder(tf.int32, name='batch_size')
         
-        phase_train_placeholder = tf.placeholder(tf.bool, name='phase_train')
+        # phase_train_placeholder = tf.placeholder(tf.bool, name='phase_train')
         
         image_paths_placeholder = tf.placeholder(tf.string, shape=(None,3), name='image_paths')
         labels_placeholder = tf.placeholder(tf.int64, shape=(None,3), name='labels')
@@ -158,17 +159,18 @@ def main(args):
             # Moving averages ends up in the trainable variables collection
             'variables_collections': [ tf.GraphKeys.TRAINABLE_VARIABLES ],
             # Only update statistics during training mode
-            'is_training': phase_train_placeholder
+            'is_training': True,
         }
         # Build the inference graph
-        prelogits, _ = network.inference(image_batch, args.keep_probability, 
-            phase_train=phase_train_placeholder, weight_decay=args.weight_decay)
-        pre_embeddings = slim.fully_connected(prelogits, args.embedding_size, activation_fn=None, 
-                weights_initializer=tf.truncated_normal_initializer(stddev=0.1), 
-                weights_regularizer=slim.l2_regularizer(args.weight_decay),
-                normalizer_fn=slim.batch_norm,
-                normalizer_params=batch_norm_params,
-                scope='Bottleneck', reuse=False)
+        prelogits, _ = network.inference(image_batch, args.keep_probability, weight_decay=args.weight_decay, phase_train=True)
+
+        with slim.arg_scope([slim.batch_norm], is_training=True):
+            pre_embeddings = slim.fully_connected(prelogits, args.embedding_size, activation_fn=None,
+		 weights_initializer=tf.truncated_normal_initializer(stddev=0.1),
+		 weights_regularizer=slim.l2_regularizer(args.weight_decay),
+		 normalizer_fn=slim.batch_norm,
+		normalizer_params=batch_norm_params,
+		scope='Bottleneck', reuse=False)
         
         embeddings = tf.nn.l2_normalize(pre_embeddings, 1, 1e-10, name='embeddings')
         # Split embeddings into anchor, positive and negative and calculate triplet loss
@@ -186,9 +188,12 @@ def main(args):
         # Build a Graph that trains the model with one batch of examples and updates the model parameters
         train_op = facenet.train(total_loss, global_step, args.optimizer, 
             learning_rate, args.moving_average_decay, tf.global_variables())
+
+            tf.contrib.quantize.create_training_graph(input_graph=g)#, quant_delay=2000)
         
         # Create a saver
-        saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=3)
+        saver = tf.train.Saver(max_to_keep=3)
+        ydwu_saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=3)
 
         # Build the summary operation based on the TF collection of Summaries.
         summary_op = tf.summary.merge_all()
@@ -203,8 +208,8 @@ def main(args):
         sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options,intra_op_parallelism_threads=8))    
 
         # Initialize variables
-        sess.run(tf.global_variables_initializer(), feed_dict={phase_train_placeholder:True})
-        sess.run(tf.local_variables_initializer(), feed_dict={phase_train_placeholder:True})
+        sess.run(tf.global_variables_initializer()) # , feed_dict={phase_train_placeholder:True})
+        sess.run(tf.local_variables_initializer()) # , feed_dict={phase_train_placeholder:True})
 
         summary_writer = tf.summary.FileWriter(log_dir, sess.graph)
         coord = tf.train.Coordinator()
@@ -214,7 +219,7 @@ def main(args):
 
             if args.pretrained_model:
                 print('Restoring pretrained model: %s' % args.pretrained_model)
-                saver.restore(sess, os.path.expanduser(args.pretrained_model))
+                ydwu_saver.restore(sess, os.path.expanduser(args.pretrained_model))
 
             # Training and validation loop
             epoch = 0
@@ -227,7 +232,7 @@ def main(args):
                 epoch = step // args.epoch_size
                 # Train for one epoch
                 train(args, sess, train_set, epoch, image_paths_placeholder, labels_placeholder, labels_batch,
-                    batch_size_placeholder, learning_rate_placeholder, phase_train_placeholder, enqueue_op, input_queue, global_step, 
+                    batch_size_placeholder, learning_rate_placeholder, enqueue_op, input_queue, global_step, 
                     embeddings, total_loss, train_op, summary_op, summary_writer, args.learning_rate_schedule_file,
                     args.embedding_size, anchor, positive, negative, triplet_loss)
 
@@ -239,7 +244,7 @@ def main(args):
                 # Evaluate on LFW
                 if args.lfw_dir:
                     acc,val=evaluate(sess, lfw_paths, embeddings, labels_batch, image_paths_placeholder, labels_placeholder, 
-                            batch_size_placeholder, learning_rate_placeholder, phase_train_placeholder, enqueue_op, actual_issame, args.batch_size, 
+                            batch_size_placeholder, learning_rate_placeholder, enqueue_op, actual_issame, args.batch_size, 
                             args.lfw_nrof_folds, log_dir, step, summary_writer, args.embedding_size)
 
                     print('starting to save the maxacc and maxval ') #fbtian_max
@@ -265,7 +270,7 @@ def main(args):
 
 
 def train(args, sess, dataset, epoch, image_paths_placeholder, labels_placeholder, labels_batch,
-          batch_size_placeholder, learning_rate_placeholder, phase_train_placeholder, enqueue_op, input_queue, global_step, 
+          batch_size_placeholder, learning_rate_placeholder, enqueue_op, input_queue, global_step, 
           embeddings, loss, train_op, summary_op, summary_writer, learning_rate_schedule_file,
           embedding_size, anchor, positive, negative, triplet_loss):
     batch_number = 0
@@ -294,7 +299,7 @@ def train(args, sess, dataset, epoch, image_paths_placeholder, labels_placeholde
         for i in xrange(nrof_batches):
             batch_size = min(nrof_examples-i*args.batch_size, args.batch_size)
             emb, lab = sess.run([embeddings, labels_batch], feed_dict={batch_size_placeholder: batch_size, 
-                learning_rate_placeholder: lr, phase_train_placeholder: True})
+                learning_rate_placeholder: lr}) #, phase_train_placeholder: True})
             emb_array[lab,:] = emb
             #np.save('emb_array_ori.npy',emb)###xhhu
             #quit()###xhhu
@@ -322,7 +327,7 @@ def train(args, sess, dataset, epoch, image_paths_placeholder, labels_placeholde
         while i < nrof_batches:
             start_time = time.time()
             batch_size = min(nrof_examples-i*args.batch_size, args.batch_size)
-            feed_dict = {batch_size_placeholder: batch_size, learning_rate_placeholder: lr, phase_train_placeholder: True}
+            feed_dict = {batch_size_placeholder: batch_size, learning_rate_placeholder: lr} # , phase_train_placeholder: True}
             err, _, step, emb, lab = sess.run([loss, train_op, global_step, embeddings, labels_batch], feed_dict=feed_dict)
             #print(emb)
             emb_array[lab,:] = emb #no use fbtian
@@ -422,7 +427,7 @@ def sample_people(dataset, people_per_batch, images_per_person):
     return image_paths, num_per_class
 
 def evaluate(sess, image_paths, embeddings, labels_batch, image_paths_placeholder, labels_placeholder, 
-        batch_size_placeholder, learning_rate_placeholder, phase_train_placeholder, enqueue_op, actual_issame, batch_size, 
+        batch_size_placeholder, learning_rate_placeholder, enqueue_op, actual_issame, batch_size, 
         nrof_folds, log_dir, step, summary_writer, embedding_size):
     start_time = time.time()
     # Run forward pass to calculate embeddings
@@ -441,7 +446,7 @@ def evaluate(sess, image_paths, embeddings, labels_batch, image_paths_placeholde
     for i in xrange(nrof_batches):
         batch_size = min(nrof_images-i*batch_size, batch_size)
         emb, lab = sess.run([embeddings, labels_batch], feed_dict={batch_size_placeholder: batch_size,
-            learning_rate_placeholder: 0.0, phase_train_placeholder: False})
+            learning_rate_placeholder: 0.0}) # , phase_train_placeholder: False})
         emb_array[lab,:] = emb
         label_check_array[lab] = 1
     print('time:%.3f' % (time.time()-start_time))

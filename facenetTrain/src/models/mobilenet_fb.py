@@ -59,30 +59,51 @@ def mobilenet(inputs,
     bn = pointwise_conv #slim.batch_norm(pointwise_conv, scope=sc+'/pw_batch_norm')
     return bn
 
-  batch_norm_params = {
-    # Decay for the moving averages.
-    'decay': 0.995,
-    # epsilon to prevent 0s in variance.
-    'epsilon': 0.001,
-    # force in-place updates of mean and variance estimates
-    'updates_collections': None,
-    # Moving averages ends up in the trainable variables collection
-    'variables_collections': [ tf.GraphKeys.TRAINABLE_VARIABLES ],
-  }
+
+  print(is_training)
+  if is_training == True:  
+    batch_norm_params = {
+      # Decay for the moving averages.
+      'decay': 0.995,
+      # epsilon to prevent 0s in variance.
+      'epsilon': 0.001,
+      # force in-place updates of mean and variance estimates
+      'updates_collections': None,
+      # 'updates_collections': tf.GraphKeys.UPDATE_OPS,
+      # Moving averages ends up in the trainable variables collection
+      'variables_collections': [ tf.GraphKeys.TRAINABLE_VARIABLES ],
+      # Only update statistics during training mode
+      'is_training': True,
+    }
+    print("is_training ========================================== True")
+  else:
+    batch_norm_params = {
+      # Decay for the moving averages.
+      'decay': 0.995,
+      # epsilon to prevent 0s in variance.
+      'epsilon': 0.001,
+      # Only update statistics during training mode
+      'is_training': False,
+    }
+    print("is_training ========================================== False")
+
   end_points = {} 
   with slim.arg_scope([slim.convolution2d, slim.separable_convolution2d],
                         weights_initializer=slim.xavier_initializer_conv2d(uniform=True),
                         weights_regularizer=slim.l2_regularizer(weight_decay),
                         normalizer_fn=slim.batch_norm,
                         normalizer_params=batch_norm_params,
-                        activation_fn=None):#, 
+                        activation_fn=tf.nn.relu):#, 
                         #outputs_collections=[end_points_collection]):
     with tf.variable_scope(scope,[inputs], reuse=reuse):
     #end_points_collection = sc.name + '_end_points'
 
       with slim.arg_scope([slim.batch_norm],
-                          is_training=is_training,
-                          activation_fn=tf.nn.relu):
+                          **batch_norm_params): #,
+                          # is_training=is_training,
+                          # activation_fn=None):
+
+        
         print(inputs) #batch_size*67*67*3 or  65~80
         net = slim.convolution2d(inputs, round(32 * width_multiplier), [3, 3], stride=1,padding='SAME',scope='conv_1')# padding='SAME', padding='VALID',
         print(net)
@@ -109,17 +130,10 @@ def mobilenet(inputs,
         net = slim.avg_pool2d(net, [5, 5], scope='avg_pool_15')
         print(net)
         end_points['avg_pool_15'] = net
-    #end_points = slim.utils.convert_collection_to_dict(end_points_collection)
-    #net = tf.squeeze(net, [1, 2], name='SpatialSqueeze')
     logits = tf.squeeze(net, [1, 2], name='logits')
     end_points['logits'] = logits
-    #logits = slim.fully_connected(net, num_classes, activation_fn=None, scope='fc_16')
-    #predictions = slim.softmax(logits, scope='Predictions')
 
-    #end_points['Logits'] = logits
-    #end_points['Predictions'] = predictions
   return logits, end_points
-  #return logits, end_points
 
 mobilenet.default_image_size = 224
 
