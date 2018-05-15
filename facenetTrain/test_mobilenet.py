@@ -24,7 +24,6 @@ if __name__ == "__main__":
             '--people_per_batch','10',
             '--images_per_person', '15', ###'9'
             '--image_size','67',
-            '--learning_rate','0.00000001',
             '--random_flip',
             '--data_dir','/data/shwu/facenet_beijing/lzlu_facenettrain/data_frombj/casia_noalgin_misc',
             '--lfw_pairs','/data/shwu/facenet_beijing/lzlu_facenettrain/data_frombj/pairs.txt',

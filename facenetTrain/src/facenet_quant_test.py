@@ -289,19 +289,11 @@ def parse_arguments(argv):
         help='L2 weight regularization.', default=0.0)
     parser.add_argument('--optimizer', type=str, choices=['ADAGRAD', 'ADADELTA', 'ADAM', 'RMSPROP', 'MOM'],
         help='The optimization algorithm to use', default='ADAGRAD')
-    parser.add_argument('--learning_rate', type=float,
-        help='Initial learning rate. If set to a negative value a learning rate ' +
-                        'schedule can be specified in the file "learning_rate_schedule.txt"', default=0.2) ##0.1
-    parser.add_argument('--learning_rate_decay_epochs', type=int,
-        help='Number of epochs between learning rate decay.', default=100)
-    parser.add_argument('--learning_rate_decay_factor', type=float,
-        help='Learning rate decay factor.', default=1.0)
     parser.add_argument('--moving_average_decay', type=float,
         help='Exponential decay for tracking of training parameters.', default=0.9999)
     parser.add_argument('--seed', type=int,
         help='Random seed.', default=666)
-    parser.add_argument('--learning_rate_schedule_file', type=str,
-        help='File containing the learning rate schedule that is used when learning_rate is set to to -1.', default='data/learning_rate_schedule.txt')
+
     parser.add_argument('--no_store_revision_info', 
         help='Disables storing of git revision info in revision_info.txt.', action='store_true')
 
