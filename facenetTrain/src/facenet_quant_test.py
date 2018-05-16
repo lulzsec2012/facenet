@@ -102,7 +102,9 @@ def main(args):
                                               shared_name=None, name=None)
         enqueue_op = input_queue.enqueue_many([image_paths_placeholder, labels_placeholder])
         
-        nrof_preprocess_threads = 4
+        # nrof_preprocess_threads = 4
+        nrof_preprocess_threads = 1
+
         images_and_labels = []
     
         for _ in range(nrof_preprocess_threads):

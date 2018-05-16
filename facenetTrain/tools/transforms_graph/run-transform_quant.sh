@@ -25,7 +25,13 @@ echo "==========================================================================
   strip_unused_nodes
   replace_conv_bias
   sort_by_execution_order
+  rename_op(old_op_name="Requantize", new_op_name="JzRequantize")
 '
+
+
+# rename_op(old_op_name="Requantize", new_op_name="RequantizeEight")
+# rename_op(old_op_name="Requantize", new_op_name="JzRequantize")
+# calculate_mn
 
 # quantize_nodes(input_max=4.07, input_min=-3.25)
 
