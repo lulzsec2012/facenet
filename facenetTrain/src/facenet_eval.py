@@ -35,13 +35,16 @@ def main(args):
     network = importlib.import_module(args.model_def, 'inference')
     
     g = tf.Graph()
-    ydwu_train = False, # True, # False,
+    phase = False,
     with g.as_default():
 
         inputs = tf.placeholder(tf.float32, shape=(None, 67, 67, 3))
         
         # Build the inference graph
-        prelogits, _ = network.inference(inputs, args.keep_probability, phase_train=ydwu_train, weight_decay=args.weight_decay)
+        prelogits, _ = network.inference(inputs,
+                                         args.keep_probability,
+                                         phase_train=phase,
+                                         weight_decay=args.weight_decay)
 
         batch_norm_params = {
             # Decay for the moving averages.
@@ -51,16 +54,21 @@ def main(args):
             # Only update statistics during training mode
             'is_training': False,
         }
-        print("is_training ========================================== False")
-        
 
-        with slim.arg_scope([slim.batch_norm], is_training=ydwu_train):
-            pre_embeddings = slim.fully_connected(prelogits, args.embedding_size, activation_fn=None, weights_initializer=tf.truncated_normal_initializer(stddev=0.1), weights_regularizer=slim.l2_regularizer(args.weight_decay), normalizer_fn=slim.batch_norm, normalizer_params=batch_norm_params, scope='Bottleneck', reuse=False)
+        with slim.arg_scope([slim.batch_norm], is_training=phase):
+            pre_embeddings = slim.fully_connected(prelogits,
+                                                  args.embedding_size,
+                                                  activation_fn=None,
+                                                  weights_initializer=tf.truncated_normal_initializer(stddev=0.1),
+                                                  weights_regularizer=slim.l2_regularizer(args.weight_decay),
+                                                  normalizer_fn=slim.batch_norm,
+                                                  normalizer_params=batch_norm_params,
+                                                  scope='Bottleneck', reuse=False)
         
         embeddings = tf.nn.l2_normalize(pre_embeddings, 1, 1e-10, name='embeddings')
         tf.reshape(embeddings, [-1,3,args.embedding_size])
 
-        print("ydwu == quant")
+        # create_eval_graph
         tf.contrib.quantize.create_eval_graph(g)
             
         # Save the checkpoint and eval graph proto to disk for freezing

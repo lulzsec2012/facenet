@@ -29,8 +29,9 @@ if __name__ == "__main__":
             '--random_flip',
             '--lfw_pairs','/mllib/ALG/facenet-tensorflow/pairs.txt',
             '--lfw_dir', '/mllib/ALG/facenet-tensorflow/lfw_67',
-            '--lfw_nrof_folds', '2']# ,
-            # '--no_store_revision_info' ]
+            '--lfw_nrof_folds', '2',
+            '--no_store_revision_info' ]
+
     print(argv)
     print("-----src.facenet_train.parse_arguments--------------")
     args = facenet_train.parse_arguments(argv)

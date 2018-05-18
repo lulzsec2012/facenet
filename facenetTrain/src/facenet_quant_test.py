@@ -47,38 +47,8 @@ from tensorflow.python.framework import graph_util
 from tensorflow.python.ops import data_flow_ops
 
 def main(args):
-  
-    network = importlib.import_module(args.model_def, 'inference')
 
-    subdir = datetime.strftime(datetime.now(), '%Y%m%d-%H%M%S')
-    log_dir = os.path.join(os.path.expanduser(args.logs_base_dir), subdir)
-    if not os.path.isdir(log_dir):  # Create the log directory if it doesn't exist
-        os.makedirs(log_dir)
-    model_dir = os.path.join(os.path.expanduser(args.models_base_dir), subdir)
-    if not os.path.isdir(model_dir):  # Create the model directory if it doesn't exist
-        os.makedirs(model_dir)
-
-    subdirmaxlin= subdir+'_lin_max' #fbtian_max
-    maxlin_dir = os.path.join(os.path.expanduser(args.models_base_dir), subdirmaxlin)#fbtian_max
-    if not os.path.exists(maxlin_dir):#fbtian_max
-        os.makedirs(maxlin_dir)#fbtian_max
-
-    subdirmax= subdir+'_max' #fbtian_max
-    modelmax_dir = os.path.join(os.path.expanduser(args.models_base_dir), subdirmax)#fbtian_max
-    if not os.path.exists(modelmax_dir):#fbtian_max
-        os.makedirs(modelmax_dir)#fbtian_max
-
-    # Store some git revision info in a text file in the log directory
-    if not args.no_store_revision_info:
-        src_path,_ = os.path.split(os.path.realpath(__file__))
-        facenet.store_revision_info(src_path, log_dir, ' '.join(sys.argv))
-
-    np.random.seed(seed=args.seed)
-    train_set = facenet.get_dataset(args.data_dir)
-    
-
-    print('Model directory: %s' % model_dir)
-    print('Log directory: %s' % log_dir)
+    np.random.seed(seed=args.seed)    
     
     if args.lfw_dir:
         print('LFW directory: %s' % args.lfw_dir)
@@ -102,9 +72,7 @@ def main(args):
                                               shared_name=None, name=None)
         enqueue_op = input_queue.enqueue_many([image_paths_placeholder, labels_placeholder])
         
-        # nrof_preprocess_threads = 4
         nrof_preprocess_threads = 1
-
         images_and_labels = []
     
         for _ in range(nrof_preprocess_threads):
@@ -117,19 +85,19 @@ def main(args):
                 image = tf.image.decode_png(file_contents)
                 
                 if args.random_crop:
-                    print('args.random_crop') #fbtian_add
+                    print('args.random_crop') 
                     image = tf.random_crop(image, [args.image_size, args.image_size, 3])
                 else:
-                    #print('else not args.random_crop') #come in fbtian_add
                     image = tf.image.resize_image_with_crop_or_pad(image, args.image_size, args.image_size)
                 if args.random_flip:
                     print('args.random_flip')
                     image = tf.image.random_flip_left_right(image)
-                if 1 : # 1
-                    image = tf.image.random_brightness(image, max_delta=0.2)  #Random brightness transformation
-                    image = tf.image.random_contrast(image, lower=0.2, upper=1.0)#Random contrast transformation
+                if 1 :
+                    #Random brightness transformation
+                    image = tf.image.random_brightness(image, max_delta=0.2)
+                    #Random contrast transformation
+                    image = tf.image.random_contrast(image, lower=0.2, upper=1.0)
                 fb_count+=1
-                #pylint: disable=no-member# fbtian_add
                 image.set_shape((args.image_size, args.image_size, 3))
 
                 # # ydwu
@@ -148,24 +116,20 @@ def main(args):
             shapes=[(args.image_size, args.image_size, 3), ()], enqueue_many=True,
             capacity=4 * nrof_preprocess_threads * args.batch_size,
             allow_smaller_final_batch=True)
-        image_batch = tf.identity(image_batch, 'input') ##fbtian
+        image_batch = tf.identity(image_batch, 'input')
                 
         # Build the summary operation based on the TF collection of Summaries.
         summary_op = tf.summary.merge_all()
 
         # Start running operations on the Graph.
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_memory_fraction)###
-        # sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) 
-        config = tf.ConfigProto(allow_soft_placement=True) ###########################################
-        # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)###################################
-        config.gpu_options.allow_growth = True###########################################
-        # sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options,intra_op_parallelism_threads=8))    
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_memory_fraction)
+        config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
         sess = tf.Session(graph=g, config=tf.ConfigProto(gpu_options=gpu_options,intra_op_parallelism_threads=8))
 
         # Initialize variables
-        sess.run(tf.global_variables_initializer()) # , feed_dict={phase_train_placeholder:True})
-        sess.run(tf.local_variables_initializer()) # , feed_dict={phase_train_placeholder:True})
-        tf.summary.FileWriter("/tmp/tf-ydwu/create-g", g)
+        sess.run(tf.global_variables_initializer())
+        sess.run(tf.local_variables_initializer())
 
         coord = tf.train.Coordinator()
         tf.train.start_queue_runners(coord=coord, sess=sess)
@@ -192,37 +156,34 @@ def main(args):
             
             for i in xrange(nrof_batches):
                 batch_size = min(nrof_images-i*batch_size, batch_size)
-                ydwu_pre_in, lab = sess.run([image_batch, labels_batch], feed_dict={batch_size_placeholder: batch_size})
+                pre_input, lab = sess.run([image_batch, labels_batch], feed_dict={batch_size_placeholder: batch_size})
 
                 g2 = tf.Graph()
                 with g2.as_default():
 
-                    ydwu_INPUT_MODEL = args.quant_model
-                    ydwu_graph_def = tf.GraphDef()
-                    with tf.gfile.FastGFile(ydwu_INPUT_MODEL,'rb') as f:        
-                        ydwu_graph_def.ParseFromString(f.read())
-                        _ = importer.import_graph_def(ydwu_graph_def, name="")
+                    quant_graph_def = tf.GraphDef()
+                    with tf.gfile.FastGFile(args.quant_model,'rb') as f:        
+                        quant_graph_def.ParseFromString(f.read())
+                        _ = importer.import_graph_def(quant_graph_def, name="")
                         
-                    sess_ydwu = tf.Session(graph=g2, config=tf.ConfigProto(allow_soft_placement=True))
-                    sess_ydwu.run(tf.global_variables_initializer())
-                    sess_ydwu.run(tf.local_variables_initializer())
+                    quant_sess = tf.Session(graph=g2, config=tf.ConfigProto(allow_soft_placement=True))
+                    quant_sess.run(tf.global_variables_initializer())
+                    quant_sess.run(tf.local_variables_initializer())
 
-                    with sess_ydwu.as_default():                
-                        ydwu_in = ydwu_pre_in
+                    with quant_sess.as_default():                
+                        quant_graph_input = pre_input
 
-                        float_out = sess_ydwu.graph.get_tensor_by_name('Bottleneck/act_quant/FakeQuantWithMinMaxVars:0')
-                        float_embeddings = sess_ydwu.run(float_out, feed_dict={tf.get_default_graph().get_operation_by_name('Placeholder').outputs[0]: ydwu_in})
+                        float_output = quant_sess.graph.get_tensor_by_name('Bottleneck/act_quant/FakeQuantWithMinMaxVars:0')
+                        float_embeddings = quant_sess.run(float_output, feed_dict={tf.get_default_graph().get_operation_by_name('Placeholder').outputs[0]: quant_graph_input})
                         
                         regularization = tf.nn.l2_normalize(float_embeddings, 1, 1e-10, name='l2_embeddings')
-                        embeddings = sess_ydwu.graph.get_tensor_by_name('l2_embeddings:0')
-                        emb = sess_ydwu.run(embeddings, feed_dict={tf.get_default_graph().get_operation_by_name('l2_embeddings').inputs[0]:float_embeddings})
+                        embeddings = quant_sess.graph.get_tensor_by_name('l2_embeddings:0')
+                        emb = quant_sess.run(embeddings, feed_dict={tf.get_default_graph().get_operation_by_name('l2_embeddings').inputs[0]:float_embeddings})
 
                         emb_array[lab,:] = emb
                         label_check_array[lab] = 1            
             
             print('time:%.3f' % (time.time()-start_time))
-
-            print("ydwu ============ emb_array = ", emb_array)
             assert(np.all(label_check_array==1))
             print('embeddings1.shape[0]:%d,embeddings2:%d'%(emb_array[0::2].shape[0],emb_array[1::2].shape[0] ))
             _, _, accuracy, val, val_std, far = lfw.evaluate(emb_array, actual_issame, nrof_folds=args.lfw_nrof_folds)
@@ -232,52 +193,34 @@ def main(args):
             lfw_time = time.time() - start_time
             # Add validation loss and accuracy to summary
             summary = tf.Summary()
-            #pylint: disable=maybe-no-member
+
             summary.value.add(tag='lfw/accuracy', simple_value=np.mean(accuracy))
             summary.value.add(tag='lfw/val_rate', simple_value=val)
             summary.value.add(tag='time/lfw', simple_value=lfw_time)
             
             print("acc = ", np.mean(accuracy))
-            print("val = ", val)
-            
+            print("val = ", val)            
             
     sess.close()
-    sess_ydwu.close()
-    return model_dir
+    quant_sess.close()
+    return 1
 
   
-      
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
-    
-    parser.add_argument('--logs_base_dir', type=str, 
-        help='Directory where to write event logs.', default='~/logs/facenet')
-    parser.add_argument('--models_base_dir', type=str,
-        help='Directory where to write trained models and checkpoints.', default='~/models/facenet')
+
+    # quantized model
+    parser.add_argument('--quant_model', type=str,
+                        help='quantized model.', default='/mllib/ALG/facenet-tensorflow-quant/graph_transforms/has-JzRequantize/quantized_graph.pb')
+
+    # Some evalution parameters
     parser.add_argument('--gpu_memory_fraction', type=float,
-                        help='Upper bound on the amount of GPU memory that will be used by the process.', default=0.3)
-    parser.add_argument('--pretrained_model', type=str,
-        help='Load a pretrained model before training starts.')
-    parser.add_argument('--data_dir', type=str,
-        help='Path to the data directory containing aligned face patches. Multiple directories are separated with colon.',
-        default='~/datasets/facescrub/fs_aligned:~/datasets/casia/casia-webface-aligned')
-    parser.add_argument('--model_def', type=str,
-                        help='Model definition. Points to a module containing the definition of the inference graph.', default='src.models.inception_resnet_v1')#'models.nn4')
-    parser.add_argument('--max_nrof_epochs', type=int,
-        help='Number of epochs to run.', default=500)
+                        help='Upper bound on the amount of GPU memory that will be used by the process.', default=0.3)    
     parser.add_argument('--batch_size', type=int,
         help='Number of images to process in a batch.', default=90)
     parser.add_argument('--image_size', type=int,
         help='Image size (height, width) in pixels.', default=96)
-    parser.add_argument('--people_per_batch', type=int,
-        help='Number of people per batch.', default=45)
-    parser.add_argument('--images_per_person', type=int,
-        help='Number of images per person.', default=40)
-    parser.add_argument('--epoch_size', type=int,
-        help='Number of batches per epoch.', default=1000)
-    parser.add_argument('--alpha', type=float,
-        help='Positive to negative triplet distance margin.', default=0.2)
     parser.add_argument('--embedding_size', type=float,
         help='Dimensionality of the embedding.', default=128)
     parser.add_argument('--random_crop', 
@@ -285,19 +228,8 @@ def parse_arguments(argv):
          'If the size of the images in the data directory is equal to image_size no cropping is performed', action='store_true')
     parser.add_argument('--random_flip', 
         help='Performs random horizontal flipping of training images.', action='store_true')
-    parser.add_argument('--keep_probability', type=float,
-                        help='Keep probability of dropout for the fully connected layer(s).', default=1.0) ##1.0
-    parser.add_argument('--weight_decay', type=float,
-        help='L2 weight regularization.', default=0.0)
-    parser.add_argument('--optimizer', type=str, choices=['ADAGRAD', 'ADADELTA', 'ADAM', 'RMSPROP', 'MOM'],
-        help='The optimization algorithm to use', default='ADAGRAD')
-    parser.add_argument('--moving_average_decay', type=float,
-        help='Exponential decay for tracking of training parameters.', default=0.9999)
     parser.add_argument('--seed', type=int,
         help='Random seed.', default=666)
-
-    parser.add_argument('--no_store_revision_info', 
-        help='Disables storing of git revision info in revision_info.txt.', action='store_true')
 
     # Parameters for validation on LFW
     parser.add_argument('--lfw_pairs', type=str,
@@ -308,9 +240,6 @@ def parse_arguments(argv):
         help='Path to the data directory containing aligned face patches.', default='~/fbtian/soft/facenet/dataset/lfw_96')
     parser.add_argument('--lfw_nrof_folds', type=int,
                         help='Number of folds to use for cross validation. Mainly used for testing.', default=2)
-
-    parser.add_argument('--quant_model', type=str,
-                        help='quantized model.', default='/home/ydwu/project/facenet/facenetTrain/tools/transforms_graph/quantized_graph.pb')
 
     return parser.parse_args(argv)
   

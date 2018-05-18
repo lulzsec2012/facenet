@@ -16,14 +16,14 @@ echo "FACENET_ROOT = " ${FACENET_ROOT}
 # CUDA_VISIBLE_DEVICES="" python ./train_mobilenet.py
 
 
-# 2) creat_eval_graph
+# # 2) creat_eval_graph
 echo "===================================="
 echo "creat_eval_graph!"
 echo "===================================="
 
 CUDA_VISIBLE_DEVICES="" python ./eval_mobilenet.py
 
-# 3) freeze_graph
+# # 3) freeze_graph
 echo "===================================="
 echo "freeze_graph!"
 echo "===================================="
@@ -31,7 +31,7 @@ echo "===================================="
 cd ${FACENET_ROOT}/tools/freeze_graph
 ./run-freeze_graph.sh
 
-# 4) graph_transforms
+# # 4) graph_transforms
 echo "===================================="
 echo "graph_transforms!"
 echo "===================================="
@@ -39,7 +39,7 @@ echo "===================================="
 cd ${FACENET_ROOT}/tools/transforms_graph
 ./run-transform_quant.sh
 
-# 5) test-final_model
+# # 5) test-final_model
 echo "===================================="
 echo "test-final_model!"
 echo "===================================="

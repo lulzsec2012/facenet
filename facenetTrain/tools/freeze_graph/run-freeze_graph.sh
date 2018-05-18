@@ -1,13 +1,15 @@
 
-echo "================================"
-echo "========= freeze_graph ========="
-echo "================================"
+# echo "================================"
+# echo "========= freeze_graph ========="
+# echo "================================"
 
-CHECKPOINT_FILE_GRAPH=/home/ydwu/project/facenet/facenetTrain/facenet_eval_graph.pbtxt
+FACENET_ROOT=$(pwd)
 
-CHECKPOINT=/tmp/ydwu-facenet/creat-training-graph/training-models/model-20180508-193523.ckpt-177839
+CHECKPOINT_FILE_GRAPH=/mllib/ALG/facenet-tensorflow-quant/creat_eval_graph/facenet_eval_graph.pbtxt
 
-RESULT_FILE=/home/ydwu/project/facenet/facenetTrain/tools/freeze_graph/frozen_eval_graph.pb
+CHECKPOINT=/tmp/lzlu-facenet/creat-training-graph/result/20180516-175949_max/model-20180516-175949.ckpt_valmax
+
+RESULT_FILE=${FACENET_ROOT}/frozen_eval_graph.pb
 OUTPUT=Bottleneck/act_quant/FakeQuantWithMinMaxVars
 
 CUDA_VISIBLE_DEVICES="" \
@@ -17,7 +19,7 @@ python freeze_graph.py \
   --output_graph=${RESULT_FILE} \
   --output_node_names=${OUTPUT}
 
-echo "================================"
-echo "========= OK ========="
-echo "================================"
+# echo "================================"
+# echo "========= OK ========="
+# echo "================================"
 

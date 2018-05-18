@@ -49,21 +49,25 @@ def main(args):
 
     subdir = datetime.strftime(datetime.now(), '%Y%m%d-%H%M%S')
     log_dir = os.path.join(os.path.expanduser(args.logs_base_dir), subdir)
-    if not os.path.isdir(log_dir):  # Create the log directory if it doesn't exist
+    
+    # Create the log directory if it doesn't exist
+    if not os.path.isdir(log_dir):
         os.makedirs(log_dir)
     model_dir = os.path.join(os.path.expanduser(args.models_base_dir), subdir)
-    if not os.path.isdir(model_dir):  # Create the model directory if it doesn't exist
+    
+    # Create the model directory if it doesn't exist
+    if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
 
-    subdirmaxlin= subdir+'_lin_max' #fbtian_max
-    maxlin_dir = os.path.join(os.path.expanduser(args.models_base_dir), subdirmaxlin)#fbtian_max
-    if not os.path.exists(maxlin_dir):#fbtian_max
-        os.makedirs(maxlin_dir)#fbtian_max
+    subdirmaxlin= subdir+'_lin_max' 
+    maxlin_dir = os.path.join(os.path.expanduser(args.models_base_dir), subdirmaxlin)
+    if not os.path.exists(maxlin_dir):
+        os.makedirs(maxlin_dir)
 
-    subdirmax= subdir+'_max' #fbtian_max
-    modelmax_dir = os.path.join(os.path.expanduser(args.models_base_dir), subdirmax)#fbtian_max
-    if not os.path.exists(modelmax_dir):#fbtian_max
-        os.makedirs(modelmax_dir)#fbtian_max
+    subdirmax= subdir+'_max' 
+    modelmax_dir = os.path.join(os.path.expanduser(args.models_base_dir), subdirmax)
+    if not os.path.exists(modelmax_dir):
+        os.makedirs(modelmax_dir)
 
     # Store some git revision info in a text file in the log directory
     if not args.no_store_revision_info:
@@ -73,11 +77,6 @@ def main(args):
     np.random.seed(seed=args.seed)
     train_set = facenet.get_dataset(args.data_dir)
     
-
-    #for i in range(args.send2):
-     #   np.random.shuffle(np.arange(10))
-
-
     print('Model directory: %s' % model_dir)
     print('Log directory: %s' % log_dir)
     if args.pretrained_model:
@@ -98,12 +97,14 @@ def main(args):
 
         # Placeholder for the learning rate
         learning_rate_placeholder = tf.placeholder(tf.float32, name='learning_rate')
-        
-        batch_size_placeholder = tf.placeholder(tf.int32, name='batch_size')
-        
-        # phase_train_placeholder = tf.placeholder(tf.bool, name='phase_train')
-        
+
+        # Placeholder for the batch size
+        batch_size_placeholder = tf.placeholder(tf.int32, name='batch_size')        
+
+        # Placeholder for the image paths
         image_paths_placeholder = tf.placeholder(tf.string, shape=(None,3), name='image_paths')
+
+        # Placeholder for the labels
         labels_placeholder = tf.placeholder(tf.int64, shape=(None,3), name='labels')
         
         input_queue = data_flow_ops.FIFOQueue(capacity=100000,
@@ -113,6 +114,7 @@ def main(args):
         enqueue_op = input_queue.enqueue_many([image_paths_placeholder, labels_placeholder])
         
         nrof_preprocess_threads = 4
+        # nrof_preprocess_threads = 1
         images_and_labels = []
         
         for _ in range(nrof_preprocess_threads):
@@ -125,19 +127,20 @@ def main(args):
                 image = tf.image.decode_png(file_contents)
                 
                 if args.random_crop:
-                    print('args.random_crop') #fbtian_add
+                    print('args.random_crop')
                     image = tf.random_crop(image, [args.image_size, args.image_size, 3])
                 else:
-                    #print('else not args.random_crop') #come in fbtian_add
                     image = tf.image.resize_image_with_crop_or_pad(image, args.image_size, args.image_size)
                 if args.random_flip:
                     print('args.random_flip')
                     image = tf.image.random_flip_left_right(image)
                 if 1 :
-                    image = tf.image.random_brightness(image, max_delta=0.2)  #Random brightness transformation
-                    image = tf.image.random_contrast(image, lower=0.2, upper=1.0)#Random contrast transformation
+                    #Random brightness transformation
+                    image = tf.image.random_brightness(image, max_delta=0.2)
+                    #Random contrast transformation
+                    image = tf.image.random_contrast(image, lower=0.2, upper=1.0)
                 fb_count+=1
-                #pylint: disable=no-member# fbtian_add
+
                 image.set_shape((args.image_size, args.image_size, 3))
                 images.append(tf.image.per_image_standardization(image))
             images_and_labels.append([images, label])
@@ -148,7 +151,7 @@ def main(args):
             shapes=[(args.image_size, args.image_size, 3), ()], enqueue_many=True,
             capacity=4 * nrof_preprocess_threads * args.batch_size,
             allow_smaller_final_batch=True)
-        image_batch = tf.identity(image_batch, 'input') ##fbtian
+        image_batch = tf.identity(image_batch, 'input') 
         batch_norm_params = {
             # Decay for the moving averages
             'decay': 0.995,
@@ -161,16 +164,18 @@ def main(args):
             # Only update statistics during training mode
             'is_training': True,
         }
+        
         # Build the inference graph
         prelogits, _ = network.inference(image_batch, args.keep_probability, weight_decay=args.weight_decay, phase_train=True)
 
         with slim.arg_scope([slim.batch_norm], is_training=True):
-            pre_embeddings = slim.fully_connected(prelogits, args.embedding_size, activation_fn=None,
-		 weights_initializer=tf.truncated_normal_initializer(stddev=0.1),
-		 weights_regularizer=slim.l2_regularizer(args.weight_decay),
-		 normalizer_fn=slim.batch_norm,
-		normalizer_params=batch_norm_params,
-		scope='Bottleneck', reuse=False)
+            pre_embeddings = slim.fully_connected(prelogits,
+                                                  args.embedding_size, activation_fn=None,
+		                                  weights_initializer=tf.truncated_normal_initializer(stddev=0.1),
+		                                  weights_regularizer=slim.l2_regularizer(args.weight_decay),
+		                                  normalizer_fn=slim.batch_norm,
+		                                  normalizer_params=batch_norm_params,
+		                                  scope='Bottleneck', reuse=False)
         
         embeddings = tf.nn.l2_normalize(pre_embeddings, 1, 1e-10, name='embeddings')
         # Split embeddings into anchor, positive and negative and calculate triplet loss
@@ -189,6 +194,7 @@ def main(args):
         train_op = facenet.train(total_loss, global_step, args.optimizer, 
             learning_rate, args.moving_average_decay, tf.global_variables())
 
+        # create_training_graph
         tf.contrib.quantize.create_training_graph(input_graph=g)#, quant_delay=2000)
         
         # Create a saver
@@ -199,17 +205,14 @@ def main(args):
         summary_op = tf.summary.merge_all()
 
         # Start running operations on the Graph.
-        #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_memory_fraction)###
-        #sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) 
-        config = tf.ConfigProto(allow_soft_placement=True) ###########################################
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)###################################
-        config.gpu_options.allow_growth = True###########################################
-        #sess = tf.Session(config=config)###########################################
+        config = tf.ConfigProto(allow_soft_placement=True)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
+        config.gpu_options.allow_growth = True
         sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options,intra_op_parallelism_threads=8))    
 
         # Initialize variables
-        sess.run(tf.global_variables_initializer()) # , feed_dict={phase_train_placeholder:True})
-        sess.run(tf.local_variables_initializer()) # , feed_dict={phase_train_placeholder:True})
+        sess.run(tf.global_variables_initializer())
+        sess.run(tf.local_variables_initializer())
 
         summary_writer = tf.summary.FileWriter(log_dir, sess.graph)
         coord = tf.train.Coordinator()
@@ -237,8 +240,6 @@ def main(args):
                     args.embedding_size, anchor, positive, negative, triplet_loss)
 
                 # Save variables and the metagraph if it doesn't exist already
-
-
                 save_variables_and_metagraph(sess, saver, summary_writer, model_dir, subdir, step)
 
                 # Evaluate on LFW
@@ -247,23 +248,22 @@ def main(args):
                             batch_size_placeholder, learning_rate_placeholder, enqueue_op, actual_issame, args.batch_size, 
                             args.lfw_nrof_folds, log_dir, step, summary_writer, args.embedding_size)
 
-                    print('starting to save the maxacc and maxval ') #fbtian_max
-                    if acc>acc_tmp:   #fbtian_max
-                        maxmodel_path = os.path.join(maxlin_dir, 'model-%s.ckpt_accmax'%subdir) #fbtian_max
-                        saver.save(sess, maxmodel_path, write_meta_graph=False)#fbtian_max
+                    print('starting to save the maxacc and maxval ') 
+                    if acc>acc_tmp:   
+                        maxmodel_path = os.path.join(maxlin_dir, 'model-%s.ckpt_accmax'%subdir) 
+                        saver.save(sess, maxmodel_path, write_meta_graph=False)
                         shutil.copy( maxmodel_path+'.data-00000-of-00001', modelmax_dir)
                         shutil.copy( maxmodel_path+'.index', modelmax_dir)
 
-                        acc_tmp=acc   #fbtian_max
-                    if val>val_tmp:   #fbtian_max
-                        maxmodel_path = os.path.join(maxlin_dir, 'model-%s.ckpt_valmax'%subdir) #fbtian_max
-                        saver.save(sess, maxmodel_path, write_meta_graph=False)#fbtian_max
+                        acc_tmp=acc   
+                    if val>val_tmp:   
+                        maxmodel_path = os.path.join(maxlin_dir, 'model-%s.ckpt_valmax'%subdir) 
+                        saver.save(sess, maxmodel_path, write_meta_graph=False)
                         shutil.copy( maxmodel_path+'.data-00000-of-00001', modelmax_dir)
                         shutil.copy( maxmodel_path+'.index', modelmax_dir)
 
-                        val_tmp=val   #fbtian
-                    print('end to save the maxacc and maxval ') #fbtian
-
+                        val_tmp=val
+                    print('end to save the maxacc and maxval ')
 
     sess.close()
     return model_dir
@@ -282,11 +282,6 @@ def train(args, sess, dataset, epoch, image_paths_placeholder, labels_placeholde
     while batch_number < args.epoch_size:
         # Sample people randomly from the dataset
         image_paths, num_per_class = sample_people(dataset, args.people_per_batch, args.images_per_person)
-        #image_paths = np.load('/home/xjyu/xhhu/facenet/npy_files/image_paths.npy')###xhhu
-        #for k in range(1,len(image_paths)): ###xhhu
-        #    image_paths[k]=image_paths[0]###xhhu
-
-        #np.save('image_paths_ori.npy',image_paths)###xhhu
 
         print('Running forward pass on sampled images: ', end='')
         start_time = time.time()
@@ -299,10 +294,8 @@ def train(args, sess, dataset, epoch, image_paths_placeholder, labels_placeholde
         for i in xrange(nrof_batches):
             batch_size = min(nrof_examples-i*args.batch_size, args.batch_size)
             emb, lab = sess.run([embeddings, labels_batch], feed_dict={batch_size_placeholder: batch_size, 
-                learning_rate_placeholder: lr}) #, phase_train_placeholder: True})
+                learning_rate_placeholder: lr})
             emb_array[lab,:] = emb
-            #np.save('emb_array_ori.npy',emb)###xhhu
-            #quit()###xhhu
         print('time=%.3f seconds' % (time.time()-start_time))
 
         # Select triplets based on the embeddings
@@ -322,16 +315,15 @@ def train(args, sess, dataset, epoch, image_paths_placeholder, labels_placeholde
         nrof_examples = len(triplet_paths)
         train_time = 0
         i = 0
-        emb_array = np.zeros((nrof_examples, embedding_size)) #no use fbtian
-        loss_array = np.zeros((nrof_triplets,))#no use fbtian
+        emb_array = np.zeros((nrof_examples, embedding_size))
+        loss_array = np.zeros((nrof_triplets,))
         while i < nrof_batches:
             start_time = time.time()
             batch_size = min(nrof_examples-i*args.batch_size, args.batch_size)
-            feed_dict = {batch_size_placeholder: batch_size, learning_rate_placeholder: lr} # , phase_train_placeholder: True}
+            feed_dict = {batch_size_placeholder: batch_size, learning_rate_placeholder: lr}
             err, _, step, emb, lab = sess.run([loss, train_op, global_step, embeddings, labels_batch], feed_dict=feed_dict)
-            #print(emb)
-            emb_array[lab,:] = emb #no use fbtian
-            loss_array[i] = err #no use fbtian
+            emb_array[lab,:] = emb
+            loss_array[i] = err
             duration = time.time() - start_time
             print('Epoch: [%d][%d/%d]\tTime %.3f\tLoss %2.5f' %
                   (epoch, batch_number+1, args.epoch_size, duration, err))
@@ -366,36 +358,32 @@ def select_triplets(embeddings, nrof_images_per_class, image_paths, people_per_b
         for j in xrange(1,nrof_images):
             a_idx = emb_start_idx + j - 1
             neg_dists_sqr = np.sum(np.square(embeddings[a_idx] - embeddings), 1)
-            for pair in xrange(j, nrof_images): # For every possible positive pair.
+            # For every possible positive pair.
+            for pair in xrange(j, nrof_images): 
                 p_idx = emb_start_idx + pair
                 pos_dist_sqr = np.sum(np.square(embeddings[a_idx]-embeddings[p_idx]))
-                if  pos_dist_sqr<(alpha/16+0.00001):  #pos_dist_sqr<(alpha/8+0.00001)
+                if  pos_dist_sqr<(alpha/16+0.00001):
                     continue
                 neg_dists_sqr[emb_start_idx:emb_start_idx+nrof_images] = np.NaN
                 all_neg = np.where(neg_dists_sqr-pos_dist_sqr< (alpha*0.65))[0] # VGG Face selecction
-                #all_neg = np.where(np.logical_and(neg_dists_sqr-pos_dist_sqr<(-alpha/10), pos_dist_sqr>alpha/8+0.00001 ))[0]  # FaceNet selection
-                #all_neg = np.where(np.logical_and(neg_dists_sqr-pos_dist_sqr<alpha, pos_dist_sqr<neg_dists_sqr))[0]  # FaceNet selection
-                #all_neg = np.where(neg_dists_sqr-pos_dist_sqr<alpha)[0] # VGG Face selecction
                 nrof_random_negs = all_neg.shape[0]
                 if nrof_random_negs>0:
                     rnd_idx = np.random.randint(nrof_random_negs)
                     n_idx = all_neg[rnd_idx]
                     triplets.append((image_paths[a_idx], image_paths[p_idx], image_paths[n_idx]))
-                    #print('Triplet %d: (%d, %d, %d), pos_dist=%2.6f, neg_dist=%2.6f (%d, %d, %d, %d, %d)' % 
-                    #    (trip_idx, a_idx, p_idx, n_idx, pos_dist_sqr, neg_dists_sqr[n_idx], nrof_random_negs, rnd_idx, i, j, emb_start_idx))
                     trip_idx += 1
 
                 num_trips += 1
 
         emb_start_idx += nrof_images
     np.random.shuffle(triplets)
-    batch_tri=int(batch_size/3) ##fbtian
-    len_tri=len(triplets)##fbtian
-    print('len_tri:%d'%len_tri )##fbtian
-    if len_tri%batch_tri : ##fbtian
-        start_tri=len_tri-len_tri%batch_tri##fbtian
-        del triplets[start_tri:len_tri]##fbtian
-    print('len(triplets):%d'%len(triplets) )##fbtian
+    batch_tri=int(batch_size/3)
+    len_tri=len(triplets)
+    print('len_tri:%d'%len_tri )
+    if len_tri%batch_tri : 
+        start_tri=len_tri-len_tri%batch_tri
+        del triplets[start_tri:len_tri]
+    print('len(triplets):%d'%len(triplets) )
     return triplets, num_trips, len(triplets)
 
 def sample_people(dataset, people_per_batch, images_per_person):
@@ -409,7 +397,7 @@ def sample_people(dataset, people_per_batch, images_per_person):
     i = 0
     image_paths = []
     num_per_class = []
-    sampled_class_indices = []##no use fbtian
+    sampled_class_indices = []
     # Sample images from these classes until we have enough
     while len(image_paths)<nrof_images:
         class_index = class_indices[i]
@@ -419,7 +407,7 @@ def sample_people(dataset, people_per_batch, images_per_person):
         nrof_images_from_class = min(nrof_images_in_class, images_per_person, nrof_images-len(image_paths))
         idx = image_indices[0:nrof_images_from_class]
         image_paths_for_class = [dataset[class_index].image_paths[j] for j in idx]
-        sampled_class_indices += [class_index]*nrof_images_from_class ##no use fbtian
+        sampled_class_indices += [class_index]*nrof_images_from_class
         image_paths += image_paths_for_class
         num_per_class.append(nrof_images_from_class)
         i+=1
@@ -446,7 +434,7 @@ def evaluate(sess, image_paths, embeddings, labels_batch, image_paths_placeholde
     for i in xrange(nrof_batches):
         batch_size = min(nrof_images-i*batch_size, batch_size)
         emb, lab = sess.run([embeddings, labels_batch], feed_dict={batch_size_placeholder: batch_size,
-            learning_rate_placeholder: 0.0}) # , phase_train_placeholder: False})
+            learning_rate_placeholder: 0.0})
         emb_array[lab,:] = emb
         label_check_array[lab] = 1
     print('time:%.3f' % (time.time()-start_time))
@@ -460,7 +448,7 @@ def evaluate(sess, image_paths, embeddings, labels_batch, image_paths_placeholde
     lfw_time = time.time() - start_time
     # Add validation loss and accuracy to summary
     summary = tf.Summary()
-    #pylint: disable=maybe-no-member
+
     summary.value.add(tag='lfw/accuracy', simple_value=np.mean(accuracy))
     summary.value.add(tag='lfw/val_rate', simple_value=val)
     summary.value.add(tag='time/lfw', simple_value=lfw_time)
@@ -487,7 +475,7 @@ def save_variables_and_metagraph(sess, saver, summary_writer, model_dir, model_n
         save_time_metagraph = time.time() - start_time
         print('Metagraph saved in %.2f seconds' % save_time_metagraph)
     summary = tf.Summary()
-    #pylint: disable=maybe-no-member
+
     summary.value.add(tag='time/save_variables', simple_value=save_time_variables)
     summary.value.add(tag='time/save_metagraph', simple_value=save_time_metagraph)
     summary_writer.add_summary(summary, step)
@@ -545,14 +533,14 @@ def parse_arguments(argv):
     parser.add_argument('--random_flip', 
         help='Performs random horizontal flipping of training images.', action='store_true')
     parser.add_argument('--keep_probability', type=float,
-                        help='Keep probability of dropout for the fully connected layer(s).', default=1.0) ##1.0
+                        help='Keep probability of dropout for the fully connected layer(s).', default=1.0)
     parser.add_argument('--weight_decay', type=float,
         help='L2 weight regularization.', default=0.0)
     parser.add_argument('--optimizer', type=str, choices=['ADAGRAD', 'ADADELTA', 'ADAM', 'RMSPROP', 'MOM'],
         help='The optimization algorithm to use', default='ADAGRAD')
     parser.add_argument('--learning_rate', type=float,
         help='Initial learning rate. If set to a negative value a learning rate ' +
-                        'schedule can be specified in the file "learning_rate_schedule.txt"', default=0.2) ##0.1
+                        'schedule can be specified in the file "learning_rate_schedule.txt"', default=0.2)
     parser.add_argument('--learning_rate_decay_epochs', type=int,
         help='Number of epochs between learning rate decay.', default=100)
     parser.add_argument('--learning_rate_decay_factor', type=float,
@@ -573,7 +561,6 @@ def parse_arguments(argv):
         help='The file extension for the LFW dataset.', default='png', choices=['jpg', 'png'])
     parser.add_argument('--lfw_dir', type=str,
         help='Path to the data directory containing aligned face patches.', default='~/fbtian/soft/facenet/dataset/lfw_96')
-#~/datasets/lfw/lfw_realigned/
     parser.add_argument('--lfw_nrof_folds', type=int,
                         help='Number of folds to use for cross validation. Mainly used for testing.', default=2)
     return parser.parse_args(argv)

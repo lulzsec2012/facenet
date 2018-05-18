@@ -1,12 +1,20 @@
 
 
-INPUT_MODEL=/home/ydwu/project/facenet/facenetTrain/tools/freeze_graph/frozen_eval_graph.pb
 
-OUTPUT_MODEL=/home/ydwu/project/facenet/facenetTrain/tools/transforms_graph/quantized_graph.pb
+# echo "========================================================================================="
+# echo "=============== Quantize to quantized_graph.pb ==============="
+# echo "========================================================================================="
 
-echo "========================================================================================="
-echo "=============== Quantize to quantized_graph.pb ==============="
-echo "========================================================================================="
+FACENET_ROOT=$(pwd)
+
+
+INPUT_MODEL=${FACENET_ROOT}/../freeze_graph/frozen_eval_graph.pb
+OUTPUT_MODEL=${FACENET_ROOT}/quantized_graph.pb
+
+# INPUT_MODEL=/home/ydwu/project/facenet/facenetTrain/tools/freeze_graph/frozen_eval_graph.pb
+# OUTPUT_MODEL=/home/ydwu/project/facenet/facenetTrain/tools/transforms_graph/quantized_graph.pb
+
+
 /home/ydwu/framework/tensorflow1.8/bazel-bin/tensorflow/tools/graph_transforms/transform_graph \
   --in_graph=${INPUT_MODEL} \
   --out_graph=${OUTPUT_MODEL} \
@@ -19,13 +27,12 @@ echo "==========================================================================
   fold_constants(ignore_errors=true)
   fold_batch_norms
   fold_old_batch_norms
-  biasadd_to_add
+  squeeze_to_reshape
   quantize_weights(minimum_size=20)
   quantize_nodes
   strip_unused_nodes
   replace_conv_bias
   sort_by_execution_order
-  rename_op(old_op_name="Requantize", new_op_name="JzRequantize")
 '
 
 
@@ -36,6 +43,6 @@ echo "==========================================================================
 # quantize_nodes(input_max=4.07, input_min=-3.25)
 
 
-echo "========================================================================================="
-echo "=============== OK! ==============="
-echo "========================================================================================="
+# echo "========================================================================================="
+# echo "=============== OK! ==============="
+# echo "========================================================================================="
