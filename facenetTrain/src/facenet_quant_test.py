@@ -173,9 +173,30 @@ def main(args):
                     with quant_sess.as_default():                
                         quant_graph_input = pre_input
 
-                        float_output = quant_sess.graph.get_tensor_by_name('Bottleneck/act_quant/FakeQuantWithMinMaxVars:0')
-                        float_embeddings = quant_sess.run(float_output, feed_dict={tf.get_default_graph().get_operation_by_name('Placeholder').outputs[0]: quant_graph_input})
+
+                        ###############################
+                        # print("embeddings is uint8!")
+                        quant_output = quant_sess.graph.get_tensor_by_name('Bottleneck/act_quant/FakeQuantWithMinMaxVars_eightbit/requantize:0')
+                        uint8_embeddings = quant_sess.run(quant_output, feed_dict={tf.get_default_graph().get_operation_by_name('Placeholder').outputs[0]: quant_graph_input})
+
+                        # # cast uint8 to float.
+                        cast_op = tf.cast(uint8_embeddings, dtype=tf.float32, name='cast_name')
+                        cast_tensor = quant_sess.graph.get_tensor_by_name('cast_name:0')
+                        pre_float_embeddings = quant_sess.run(cast_tensor, feed_dict={cast_op:uint8_embeddings})
+
+                        # # comput (x - x_zero)
+                        float_embeddings = pre_float_embeddings - 128.0
+                        # range_scale = (4.67123938 + 4.68840265) / (256.0 - 1.0)
+                        # quant_zero = round(-4.68840265 / range_scale) * range_scale
+                        # quant_zero = -128.0
                         
+                        # ###############################                        
+                        # print("embeddings is float!")
+                        # float_output = quant_sess.graph.get_tensor_by_name('Bottleneck/act_quant/FakeQuantWithMinMaxVars:0')
+                        # float_embeddings = quant_sess.run(float_output, feed_dict={tf.get_default_graph().get_operation_by_name('Placeholder').outputs[0]: quant_graph_input})
+                        
+                        ###############################
+
                         regularization = tf.nn.l2_normalize(float_embeddings, 1, 1e-10, name='l2_embeddings')
                         embeddings = quant_sess.graph.get_tensor_by_name('l2_embeddings:0')
                         emb = quant_sess.run(embeddings, feed_dict={tf.get_default_graph().get_operation_by_name('l2_embeddings').inputs[0]:float_embeddings})

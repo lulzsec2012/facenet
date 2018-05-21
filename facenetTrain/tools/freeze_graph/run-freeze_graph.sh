@@ -5,7 +5,7 @@
 
 FACENET_ROOT=$(pwd)
 
-CHECKPOINT_FILE_GRAPH=/mllib/ALG/facenet-tensorflow-quant/creat_eval_graph/facenet_eval_graph.pbtxt
+CHECKPOINT_FILE_GRAPH=/mllib/ALG/facenet-tensorflow-quant/based-beijing/creat_eval_graph/facenet_eval_graph.pbtxt
 
 CHECKPOINT=/tmp/lzlu-facenet/creat-training-graph/result/20180516-175949_max/model-20180516-175949.ckpt_valmax
 

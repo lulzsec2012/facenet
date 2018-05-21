@@ -10,7 +10,10 @@ import src.facenet_quant_test as facenet_test
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
-QUANTIZED_MODEL='/home/ydwu/project/facenet/facenetTrain/tools/transforms_graph/quantized_graph.pb'
+# QUANTIZED_MODEL='/home/ydwu/project/facenet/facenetTrain/tools/transforms_graph/quantized_graph.pb'
+# QUANTIZED_MODEL='/mllib/ALG/facenet-tensorflow-quant/based-beijing/graph_transforms/has-JzRequantize/quantized_graph.pb'
+# QUANTIZED_MODEL='/mllib/ALG/facenet-tensorflow-quant/based-beijing/graph_transforms/has-RequantizeEight/quantized_graph.pb'
+# QUANTIZED_MODEL='/mllib/ALG/facenet-tensorflow-quant/based-beijing/graph_transforms/no-mn/quantized_graph.pb'
 
 if __name__ == "__main__":
     argv = ['--quant_model',QUANTIZED_MODEL,
