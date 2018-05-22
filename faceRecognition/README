@@ -1,15 +1,15 @@
 =========environment================
 Note: 230 server
 1) facenet environment
-Based on the installation of conda from tensorflow - facenet. Yaml file import environment
-Conda env create -f tensorflow - facenet. Yaml
+Based on the installation of conda from tensorflow-facenet.yaml file import environment
+Conda env create -f tensorflow-facenet.yaml
 Note: the opencv library environment need to reinstall
 Conda install opencv3 - channel https://conda.anaconda.org/menpo (if you repeat a few times more errors)
 2) caffe/MTCNN environment
-Git repository: git clone git@193.169.1.230: framework/facenet git
+Git repository: git clone git@193.169.1.230:framework/caffe.git
 Branches: remote warehouse dev_caffe_ingenic_mtcnn
 Will get the caffe compile: make clean
-The make - j8 && make pycaffe
+The make-j8 && make pycaffe
 
 ============Code using===============
 1) mtcnn_caffe_to_facenet_data.py role: face detection on the image input MTCNN network network to detect the face frame to copy down, resize into the size of 67 * 67 (provide for the use of facenet) and save the image.

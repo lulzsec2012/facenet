@@ -8,6 +8,7 @@ import cv2
 import tensorflow as tf
 import numpy as np
 import argparse
+import cPickle as pickle
 from tensorflow.python.framework import importer
 from tensorflow.python.ops import data_flow_ops
 from scipy import interpolate
@@ -113,6 +114,11 @@ def main(args):
                 print('===============Collection emb database start !!====================')
             else:
                 pass
+
+            data = dict()
+            emb_all = []
+            emb_name = []
+            emb_name = lfw_paths
             for i in xrange(nrof_batches):
                 name_path = lfw_paths[i]
                 batch_size = min(nrof_images-i*batch_size, batch_size)
@@ -134,58 +140,57 @@ def main(args):
                         regularization = tf.nn.l2_normalize(float_embeddings, 1, 1e-10, name='l2_embeddings')
                         embeddings = sess_ydwu.graph.get_tensor_by_name('l2_embeddings:0')
                         emb = sess_ydwu.run(embeddings, feed_dict={tf.get_default_graph().get_operation_by_name('l2_embeddings').inputs[0]:float_embeddings})
+                        emb_all.append(emb)
                         if args.pathways == 1:
                             print ('===========One test start==============')
                             input_dir1 = args.database
-                            cla2 = os.listdir(input_dir1)
+                            save_txt = input_dir1 + "/temp.imdb"
+                            fid = open(save_txt,'r')
+                            data = pickle.load(fid)
+                            fid.close()
                             dist_list = []
-                            for cls1 in cla2:
-                                path = os.path.join(input_dir1, cls1)
-                                emb1 = np.loadtxt(path)
-                                dist = np.sqrt(np.sum(np.square(np.subtract(emb[:], emb1[:]))))
-                                dist_list.append(dist)
-                                
+                            for emb1 in data['emb_all']:
+                                 dist = np.sqrt(np.sum(np.square(np.subtract(emb[:], emb1[:]))))
+                                 dist_list.append(dist)
                             min_dist = min(dist_list)
                             min_index = []
                             min_index = getMinIndex(dist_list)
                             for j in min_index:
-                                file_name = cla2[j].rstrip('.txt')
-                                file_name_ = file_name 
-                                while file_name[-1] != '_':
-                                    file_name = file_name.rstrip(file_name[-1])
-                                file_name = file_name.rstrip(file_name[-1])
-                                name_database = input_dir1.rstrip('_txt')+'/'+file_name
-                                imgpath = os.path.join(name_database, file_name_+'.jpg')
+                                imgpath = data['emb_name'][j]
+                                file_name_ = data['emb_name'][j].split('/')
+                                file_name_ = file_name_[-1].rstrip('.jpg')
+                                
+                                test_name_ = name_path.split('/')
+                                test_name_ = test_name_[-1].rstrip('.jpg')
                                 flag = 0
                                 if min_dist < 0.8955:
                                     flag += 1
-                                    print('The test one is like %s on dist: %1.4f  ' %(file_name_,min_dist))
-                                    print('The test one is like %s on score: %1.4f  ' %(file_name_,dict2score(min_dist)))
+                                    print('The test %s is like %s on dist: %1.4f  ' %(test_name_,file_name_,min_dist))
+                                    print('The test %s is like %s on score: %1.4f  ' %(test_name_,file_name_,dict2score(min_dist)))
                                     test_img = cv2.imread(name_path)
                                     database_img = cv2.imread(imgpath)
-                                    cv2.imshow(file_name, database_img)
+                                    cv2.imshow(file_name_, database_img)
                                     cv2.imshow("test", test_img)
                                     cv2.waitKey(0)
                             if flag == 0:
                                 print("The test one isn't exist database")
                                 
                             print ('===========One test end================')
-                        elif args.pathways == 0:
-                            save_dir = input_dir0 + "_txt/"
-                            if not os.path.isdir(save_dir):  
-                                os.makedirs(save_dir)
-                            name_path_ = name_path.split('/')
-                            im_name_ = name_path_[-1]
-                            print ("im_name_ =",im_name_)
-                            print 
-                            print ('===========emb  collection start==============')
-                            im_name_ = im_name_.rstrip('.jpg')
-                            xxoo = save_dir + im_name_ + '.txt'    
-                            file1 = open(xxoo,'w')  
-                            np.savetxt(file1,emb)
-                            print ('===========emb  collection end================')
                         else:
                             pass
+            if args.pathways == 0:
+                save_dir = input_dir0 + "_txt/"
+                if not os.path.isdir(save_dir):  
+                    os.makedirs(save_dir)
+                data['emb_all'] = emb_all
+                data['emb_name'] = emb_name
+                save_dir_txt = save_dir+'temp.imdb'
+                f = open(save_dir_txt,'w')
+                pickle.dump(data, f)
+                f.close()
+                print ('===========emb  collection end================')
+            else:
+                pass
         if args.pathways == 1:
             print('===============Compare emb database end !!======================')
         elif args.pathways == 0:
