@@ -113,27 +113,46 @@ def main(args):
                 print('===============Collection emb database start !!====================')
             else:
                 pass
+
             for i in xrange(nrof_batches):
                 name_path = lfw_paths[i]
                 batch_size = min(nrof_images-i*batch_size, batch_size)
-                ydwu_pre_in, lab = sess.run([image_batch, labels_batch], feed_dict={batch_size_placeholder: batch_size})
+                pre_input, lab = sess.run([image_batch, labels_batch], feed_dict={batch_size_placeholder: batch_size})
+
                 g2 = tf.Graph()
                 with g2.as_default():
-                    ydwu_INPUT_MODEL = args.quant_model
-                    ydwu_graph_def = tf.GraphDef()
-                    with tf.gfile.FastGFile(ydwu_INPUT_MODEL,'rb') as f:        
-                        ydwu_graph_def.ParseFromString(f.read())
-                        _ = importer.import_graph_def(ydwu_graph_def, name="")
-                    sess_ydwu = tf.Session(graph=g2, config=tf.ConfigProto(allow_soft_placement=True))
-                    sess_ydwu.run(tf.global_variables_initializer())
-                    sess_ydwu.run(tf.local_variables_initializer())
-                    with sess_ydwu.as_default():                
-                        ydwu_in = ydwu_pre_in
-                        float_out = sess_ydwu.graph.get_tensor_by_name('Bottleneck/act_quant/FakeQuantWithMinMaxVars:0')
-                        float_embeddings = sess_ydwu.run(float_out, feed_dict={tf.get_default_graph().get_operation_by_name('Placeholder').outputs[0]: ydwu_in})
+                    quant_graph_def = tf.GraphDef()
+                    with tf.gfile.FastGFile(args.quant_model,'rb') as f:        
+                        quant_graph_def.ParseFromString(f.read())
+                        _ = importer.import_graph_def(quant_graph_def, name="")
+                    quant_sess = tf.Session(graph=g2, config=tf.ConfigProto(allow_soft_placement=True))
+                    quant_sess.run(tf.global_variables_initializer())
+                    quant_sess.run(tf.local_variables_initializer())
+                    with quant_sess.as_default():                
+                        quant_graph_input = pre_input
+
+                        ###############################
+                        # print("embeddings is uint8!")
+                        quant_output = quant_sess.graph.get_tensor_by_name('Bottleneck/act_quant/FakeQuantWithMinMaxVars_eightbit/requantize:0')
+                        uint8_embeddings = quant_sess.run(quant_output, feed_dict={tf.get_default_graph().get_operation_by_name('Placeholder').outputs[0]: quant_graph_input})
+
+                        # # cast uint8 to float.
+                        cast_op = tf.cast(uint8_embeddings, dtype=tf.float32, name='cast_name')
+                        cast_tensor = quant_sess.graph.get_tensor_by_name('cast_name:0')
+                        pre_float_embeddings = quant_sess.run(cast_tensor, feed_dict={cast_op:uint8_embeddings})
+
+                        # # comput (x - x_zero)
+                        float_embeddings = pre_float_embeddings - 128.0
+
+                        # ###############################                        
+                        # print("embeddings is float!")
+                        # float_out = quant_sess.graph.get_tensor_by_name('Bottleneck/act_quant/FakeQuantWithMinMaxVars:0')
+                        # float_embeddings = quant_sess.run(float_out, feed_dict={tf.get_default_graph().get_operation_by_name('Placeholder').outputs[0]: quant_graph_input})
+
+                        ###############################
                         regularization = tf.nn.l2_normalize(float_embeddings, 1, 1e-10, name='l2_embeddings')
-                        embeddings = sess_ydwu.graph.get_tensor_by_name('l2_embeddings:0')
-                        emb = sess_ydwu.run(embeddings, feed_dict={tf.get_default_graph().get_operation_by_name('l2_embeddings').inputs[0]:float_embeddings})
+                        embeddings = quant_sess.graph.get_tensor_by_name('l2_embeddings:0')
+                        emb = quant_sess.run(embeddings, feed_dict={tf.get_default_graph().get_operation_by_name('l2_embeddings').inputs[0]:float_embeddings})
                         if args.pathways == 1:
                             print ('===========One test start==============')
                             input_dir1 = args.database
@@ -161,11 +180,11 @@ def main(args):
                                     flag += 1
                                     print('The test one is like %s on dist: %1.4f  ' %(file_name_,min_dist))
                                     print('The test one is like %s on score: %1.4f  ' %(file_name_,dict2score(min_dist)))
-                                    test_img = cv2.imread(name_path)
-                                    database_img = cv2.imread(imgpath)
-                                    cv2.imshow(file_name, database_img)
-                                    cv2.imshow("test", test_img)
-                                    cv2.waitKey(0)
+                                    # test_img = cv2.imread(name_path)
+                                    # database_img = cv2.imread(imgpath)
+                                    # cv2.imshow(file_name, database_img)
+                                    # cv2.imshow("test", test_img)
+                                    # cv2.waitKey(0)
                             if flag == 0:
                                 print("The test one isn't exist database")
                                 
@@ -193,7 +212,7 @@ def main(args):
         else:
             pass
     sess.close()
-    sess_ydwu.close()
+    quant_sess.close()
 
 def parse_arguments(argv):
     
