@@ -1,0 +1,49 @@
+=========environment================
+Note: 230 server
+1) facenet environment
+Based on the installation of conda from tensorflow - facenet. Yaml file import environment
+Conda env create -f tensorflow - facenet. Yaml
+Note: the opencv library environment need to reinstall
+Conda install opencv3 - channel https://conda.anaconda.org/menpo (if you repeat a few times more errors)
+2) caffe/MTCNN environment
+Git repository: git clone git@193.169.1.230: framework/facenet git
+Branches: remote warehouse dev_caffe_ingenic_mtcnn
+Will get the caffe compile: make clean
+The make - j8 && make pycaffe
+
+============Code using===============
+1) mtcnn_caffe_to_facenet_data.py role: face detection on the image input MTCNN network network to detect the face frame to copy down, resize into the size of 67 * 67 (provide for the use of facenet) and save the image.
+2) test_mobilenet.py function: several images (67 * 67) input facenet network face recognition or generated several 128 - dimensional feature vector format.
+3) tools_matrix.py role: mtcnn_caffe_to_facenet_data. Py core code encapsulation
+4) facenet_recognize.py role: test_mobilenet. Py core code encapsulation
+5) run_v1.sh: will mtcnn_caffe_to_facenet_data. Py and test_mobilenet py two skewer the execution of the script file.
+
+
+===========Operation process==========
+(1) to generate 128 dimensional feature vector format
+1) parameter Settings:
+Through mtcnn_caffe_to_facenet_data.py files
+	--data_dir: set the input MTCNN network path of several photos,
+Path format for two level categories such as: ~/image of it:
+        ~/image/zhangsan/0.jpg   ~/image/lisi/0.jpg
+Through test_mobilenet.py
+	--pathways: set 0, to generate the 128 d characteristic vector files;
+	--data_dir: set the input facenet network path of several photos with mtcnn_caffe_to_facenet_data. Py file - data_dir consistent path such as: ~ / image_67 (in fact, the file is a mtcnn_caffe_to_facenet_data.py generation and ~/image with the directory ~/image_67 (67 * 67))
+2) execute the script:
+By running the/run_v1.sh can generate 128 - dimensional feature vector format
+Generation product: ~/image_67 facenet network image data sets (input)
+	   ~/image_67_txt generation 128 d (vector file).
+(2) any input image, and generate 128 d characteristic vector library do
+1) parameter Settings:
+Through mtcnn_caffe_to_facenet_data.py files
+	--data_dir: set the input MTCNN network path of several photos,
+Path format for two level categories such as: ~/test_img its composition:
+        ~/test_img zhangsan/zhangsan_0.jpg zhangsan_1.jpg zhangsan_2.jpg (can be one or more copies)
+Through test_mobilenet.py
+	--pathways: set 1, arbitrary input image, and 128 d characteristic vector file library comparing;
+	--data_dir: set the input facenet network path of several photos with mtcnn_caffe_to_facenet_data. Py file - data_dir consistent path such as: ~ / test_img_67 (in fact, the file is a mtcnn_caffe_to_facenet_data.py generation and ~/test_img with directory ~/test_img_67 (67 * 67))
+	--the database Settings than 128 d feature vector files, the path for the generated ~/image_67_txt
+Path form is for example ~/image_67_txt zhangsan.txt/"128 for the feature vector"
+        ~/image_67_txt/lisi.txt/"128 as the characteristic vector"
+2) execute the script:
+By running the/run_v1.sh can do compare and 128 d feature vector files.
