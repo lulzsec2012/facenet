@@ -35,6 +35,9 @@ def main(args):
     input_dir0 = args.data_dir
     classes1 = os.listdir(input_dir0)
     for cls1 in classes1 :
+        path1 = os.path.join(input_dir0, cls1)
+        if not(os.path.isdir(path1)):
+            continue
         path = os.path.join(input_dir0, cls1)
         for im_name in os.listdir(path):
             imgpath = os.path.join(path, im_name)
@@ -160,8 +163,7 @@ def main(args):
                         emb_all.append(emb)
                         if args.pathways == 1:
                             print ('===========One test start==============')
-                            input_dir1 = args.database
-                            save_txt = input_dir1 + "/temp.imdb"
+                            save_txt = args.database + "/database.imdb"
                             fid = open(save_txt,'r')
                             data = pickle.load(fid)
                             fid.close()
@@ -180,7 +182,7 @@ def main(args):
                                 test_name_ = name_path.split('/')
                                 test_name_ = test_name_[-1].rstrip('.jpg')
                                 flag = 0
-                                if min_dist < 0.8955:
+                                if min_dist < args.best_threshold:
                                     flag += 1
                                     print('The test %s is like %s on dist: %1.4f  ' %(test_name_,file_name_,min_dist))
                                     print('The test %s is like %s on score: %1.4f  ' %(test_name_,file_name_,dict2score(min_dist)))
@@ -196,15 +198,15 @@ def main(args):
                         else:
                             pass
             if args.pathways == 0:
-                save_dir = input_dir0 + "_txt/"
+                save_dir = args.database
                 if not os.path.isdir(save_dir):  
                     os.makedirs(save_dir)
                 data['emb_all'] = emb_all
                 data['emb_name'] = emb_name
-                save_dir_txt = save_dir+'temp.imdb'
-                f = open(save_dir_txt,'w')
-                pickle.dump(data, f)
-                f.close()
+                save_dir_imdb = save_dir+'/database.imdb'
+                fid = open(save_dir_imdb,'w')
+                pickle.dump(data, fid)
+                fid.close()
                 print ('===========emb  collection end================')
             else:
                 pass
@@ -217,8 +219,7 @@ def main(args):
     sess.close()
     quant_sess.close()
 
-def parse_arguments(argv):
-    
+def parse_arguments(argv): 
     parser = argparse.ArgumentParser()
     parser.add_argument('--pathways', type=int,
                         help='if 1 run compare database else 0 run create database', default=1)
@@ -237,6 +238,8 @@ def parse_arguments(argv):
         help='Random seed.', default=666)
     parser.add_argument('--database', type=str,
         help='Compare database.', default='./mtcnn_to_facenet_data_67_txt')
+    parser.add_argument('--best_threshold', type=float,
+                        help='Threshold to distinguish whether the same people.', default=0.9)
     parser.add_argument('--quant_model', type=str,
                         help='quantized model.', default='/mllib/ALG/facenet-tensorflow-quant/based-beijing/graph_transforms/has-JzRequantize/quantized_graph.pb')
 

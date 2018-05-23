@@ -1,10 +1,8 @@
-#!/usr/bin/env python
-#coding:utf-8
 import sys,pprint
 #pprint.pprint(sys.path)
 sys.path.append('../')
 sys.path.append('./')
-sys.path.append('/home/shwu/work/mtcnn_caffe/python')
+sys.path.append('${HOME}/work/mtcnn_caffe/python')
 
 import caffe, os
 import cv2
@@ -14,7 +12,19 @@ import argparse
 import numpy as np
 import tools_matrix as tools
 
-def detectFace(img_path,threshold):
+def detectFace(img_path,threshold,args):
+    deploy = args.net_12_prototxt
+    caffemodel = args.net_12_caffemodel
+    net_12 = caffe.Net(deploy,caffemodel,caffe.TEST)
+     
+    deploy = args.net_24_prototxt
+    caffemodel = args.net_24_caffemodel
+    net_24 = caffe.Net(deploy,caffemodel,caffe.TEST)
+          
+    deploy = args.net_48_prototxt
+    caffemodel = args.net_48_caffemodel
+    net_48 = caffe.Net(deploy,caffemodel,caffe.TEST)
+
     print ("img_path:",img_path)
     img = cv2.imread(img_path)
     caffe_img = (img.copy()-127.5)/127.5
@@ -95,8 +105,11 @@ def main(args):
     input_dir0 = args.data_dir
     classes1 = os.listdir(input_dir0)
     for cls1 in classes1 :
+        path1 = os.path.join(input_dir0, cls1)
+        if not(os.path.isdir(path1)):
+            continue
         path = os.path.join(input_dir0, cls1)
-        facenet_save_dir = input_dir0+"_67/"+cls1      
+        facenet_save_dir = os.path.join(args.save_dir, cls1)     
         if not os.path.isdir(facenet_save_dir):  
             os.makedirs(facenet_save_dir)                    
         faceimg_size = 67                                 
@@ -111,7 +124,7 @@ def main(args):
                 print ("Exception =",e)
                 continue
             start = time.time()
-            rectangles = detectFace(imgpath,threshold)
+            rectangles = detectFace(imgpath,threshold,args)
             print (sum, 'time = ', time.time() - start, 's')
             img = cv2.imread(imgpath)
             draw = img.copy()
@@ -148,34 +161,11 @@ def parse_arguments(argv):
                         help='int8 48net.caffemodel.', default='/mllib/ALG/quant_mtcnn/int8_48net.caffemodel')
     parser.add_argument('--data_dir', type=str,
         help='Path to the data directory.',default='./test_per_data')
+    parser.add_argument('--save_dir', type=str,
+        help='Path to save the data directory.',default='./test_per_data_67')
     parser.add_argument('--threshold', dest='threshold', help='list of threshold for pnet, rnet, onet', nargs="+", default=[0.8, 0.8, 0.8], type=float)
 
     return parser.parse_args(argv)
-  
 
 if __name__ == '__main__':
-    argv = ['--net_12_prototxt','/mllib/ALG/quant_mtcnn/int8_12net.prototxt',
-            '--net_12_caffemodel','/mllib/ALG/quant_mtcnn/int8_12net.caffemodel',
-            '--net_24_prototxt', '/mllib/ALG/quant_mtcnn/int8_24net.prototxt',
-            '--net_24_caffemodel','/mllib/ALG/quant_mtcnn/int8_24net.caffemodel',
-            '--net_48_prototxt','/mllib/ALG/quant_mtcnn/int8_48net.prototxt',
-            '--net_48_caffemodel','/mllib/ALG/quant_mtcnn/int8_48net.caffemodel',
-            '--data_dir','/data/shwu/task/facenet/faceRecognition/jz_80val']
-    print("argv =",argv)
-    print("===================parse_arguments=======================")
-    args = parse_arguments(argv)
-    print("args =",args)
-    deploy = args.net_12_prototxt
-    caffemodel = args.net_12_caffemodel
-    net_12 = caffe.Net(deploy,caffemodel,caffe.TEST)
-     
-    deploy = args.net_24_prototxt
-    caffemodel = args.net_24_caffemodel
-    net_24 = caffe.Net(deploy,caffemodel,caffe.TEST)
-          
-    deploy = args.net_48_prototxt
-    caffemodel = args.net_48_caffemodel
-    net_48 = caffe.Net(deploy,caffemodel,caffe.TEST)
-    print("===================main===================================")
-    main(args)
-
+    main(parse_arguments(sys.argv[1:]))
