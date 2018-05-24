@@ -1,49 +1,81 @@
 =========environment================
 Note: 230 server
-1) facenet environment
-Based on the installation of conda from tensorflow-facenet.yaml file import environment
-Conda env create -f tensorflow-facenet.yaml
+1. caffe/mtcnn + tensorflow/facenet environment
+Based on the installation of conda from mtcnn-facenet-env.yaml file import environment
+      $ conda env create -f mtcnn-facenet-env.yaml
 Note: the opencv library environment need to reinstall
-Conda install opencv3 - channel https://conda.anaconda.org/menpo (if you repeat a few times more errors)
-2) caffe/MTCNN environment
-Git repository: git clone git@193.169.1.230:framework/caffe.git
-Branches: remote warehouse dev_caffe_ingenic_mtcnn
-Will get the caffe compile: make clean
-The make-j8 && make pycaffe
+      $ conda install opencv3 - channel https://conda.anaconda.org/menpo (if you repeat a few times more errors)
 
+2. setup caffe
+   $ git clone git@193.169.1.230:framework/caffe.git
+   $ git checkout dev-caffe-ingenic-mtcnn
+   commit : a14b586f45f16a6b6fad1b4c80d140c86e6d5590
+The dependences of anaconda env for mtcnn is in mtcnn-facenet-env.yaml.
+1)Construction Makefile.config
+      $ cp Makefile.config.example_for_anaconda Makefile.config
+2)Change Makefile.config
+Makefile.config:31: set your cuda path(the version of cuda is 8.0)
+Makefile.config:67: set your anaconda env path
+3)Setup
+      $ source activate your anaconda env
+      $ make clean
+      $ make -j16 && make pycaffe
+
+Some problem:
+if meet "libgdal.so.1 raises error undefined symbol: sqlite3_column_table_name"
+you need change you the link of sqlite3 in your anaconda env, example:
+    $ rm ${HOME}/anaconda2/env/caffe_mtcnn/lib/libsqlite3.so.0
+    $ ln -s /usr/lib/x86_64-linux-gnu/libsqlite3.so.0.8.6 libsqlite3.so.0
+    $ rm ${HOME}/anaconda2/env/caffe_mtcnn/lib/libsqlite3.so
+    $ ln -s /usr/lib/x86_64-linux-gnu/libsqlite3.so.0.8.6 libsqlite3.so
+note: you need replace "caffe_mtcnn" with your env's name.
+
+3. setup tensorflow
+    $ git@193.169.1.230:framework/tensorflow.git
+    $ git checkout dev-nexta-v1.0-quant-ydwu-facenet
+    commit：8c48ddbe034472f7d0483168177b8ac446fa83b6
+The dependences of anaconda env for facenet is in mtcnn-facenet-env.yaml
+    make
+    $ bazel build --config=opt --config=cuda //tensorflow/tools/pip_package:build_pip_package
+    $ bazel-bin/tensorflow/tools/pip_package/build_pip_package  /tmp/quant_tensorflow_pkg
+    $ pip install /tmp/ quant_tensorflow_pkg/tensorflow-1.7.0-cp27-cp27mu-linux_x86_64.whl
+    
 ============Code using===============
-1) mtcnn_caffe_to_facenet_data.py role: face detection on the image input MTCNN network network to detect the face frame to copy down, resize into the size of 67 * 67 (provide for the use of facenet) and save the image.
-2) test_mobilenet.py function: several images (67 * 67) input facenet network face recognition or generated several 128 - dimensional feature vector format.
-3) tools_matrix.py role: mtcnn_caffe_to_facenet_data. Py core code encapsulation
-4) facenet_recognize.py role: test_mobilenet. Py core code encapsulation
-5) run_v1.sh: will mtcnn_caffe_to_facenet_data. Py and test_mobilenet py two skewer the execution of the script file.
-
+1)core/mtcnn_to_facenet_data.py: a number of images are entered into the mtcnn network for face detection, and the network will copy the face boxes that are detected, and resize the images of 67*67 (provided to facenet) and save them.
+2)core/tools_matrix.py: core/mtcnn_to_facenet_data.py core code
+3)core/facenet_recognize.py: several images (67*67) enter the facenet network for face recognition or generate a number of 128 dimensional feature vector file libraries.
+4)mtcnn_facenet.py: tune core/mtcnn_to_facenet_data.py and core/facenet_recognize.py to string mtcnn and facenet.
 
 ===========Operation process==========
-(1) to generate 128 dimensional feature vector format
-1) parameter Settings:
-Through mtcnn_caffe_to_facenet_data.py files
-	--data_dir: set the input MTCNN network path of several photos,
-Path format for two level categories such as: ~/image of it:
-        ~/image/zhangsan/0.jpg   ~/image/lisi/0.jpg
-Through test_mobilenet.py
-	--pathways: set 0, to generate the 128 d characteristic vector files;
-	--data_dir: set the input facenet network path of several photos with mtcnn_caffe_to_facenet_data. Py file - data_dir consistent path such as: ~ / image_67 (in fact, the file is a mtcnn_caffe_to_facenet_data.py generation and ~/image with the directory ~/image_67 (67 * 67))
-2) execute the script:
-By running the/run_v1.sh can generate 128 - dimensional feature vector format
-Generation product: ~/image_67 facenet network image data sets (input)
-	   ~/image_67_txt generation 128 d (vector file).
-(2) any input image, and generate 128 d characteristic vector library do
-1) parameter Settings:
-Through mtcnn_caffe_to_facenet_data.py files
-	--data_dir: set the input MTCNN network path of several photos,
-Path format for two level categories such as: ~/test_img its composition:
-        ~/test_img zhangsan/zhangsan_0.jpg zhangsan_1.jpg zhangsan_2.jpg (can be one or more copies)
-Through test_mobilenet.py
-	--pathways: set 1, arbitrary input image, and 128 d characteristic vector file library comparing;
-	--data_dir: set the input facenet network path of several photos with mtcnn_caffe_to_facenet_data. Py file - data_dir consistent path such as: ~ / test_img_67 (in fact, the file is a mtcnn_caffe_to_facenet_data.py generation and ~/test_img with directory ~/test_img_67 (67 * 67))
-	--the database Settings than 128 d feature vector files, the path for the generated ~/image_67_txt
-Path form is for example ~/image_67_txt zhangsan.txt/"128 for the feature vector"
-        ~/image_67_txt/lisi.txt/"128 as the characteristic vector"
-2) execute the script:
-By running the/run_v1.sh can do compare and 128 d feature vector files.
+1. generate 128 dimensional feature vector file library.
+
+ 1)parameter setting:
+   Through the mtcnn_facenet.py file.
+        save_dir: set the image data set path of the mtcnn network output (67*67) and also the image data set path of the facenet network input (67*67);
+	--data_dir: set the path of several images of the input mtcnn network,
+   The path format is a two-level directory such as:
+    	~/image:
+    	~/image/zhangsan/0.png  1.png  2.png (can be one or more)
+	~/image/lisi/0.png  1.png (may be one or more)
+	--pathways: set 0 to generate the 128-dimensional feature vector file library;
+	--database: set the path to generate 128 dimensional feature vectors.
+ 2)execution script:
+   By running  $ ./mtcnn_facenet.py, you can generate a 128-dimensional feature vector file library.
+   Generated products:
+        save_dir/(generate a number of images (67*67) image data sets)
+	Database/(generates 128 dimensional feature vector file library).
+	
+2. any input of an image is compared with the generated 128-dimension feature vector file library.
+ 1)parameter setting:
+   Through the mtcnn_facenet.py file.
+    	save_dir: set the image data set path of the mtcnn network output (67*67) and also the image data set path of the facenet network input (67*67);
+	--data_dir: set the path of several images of the input mtcnn network,
+   The path format is a two-level directory such as:
+        ~/test:
+	~/test/zhangsan/0.png  1.png  2.png  (can be one or more)
+	~/test/lisi/0.png  1.png (may be one or more)
+	--pathways: set 0 to generate the 128-dimensional feature vector file library;
+	--database: set the path to generate 128 dimensional feature vectors.
+ 2)execution script:
+   By running  $ ./mtcnn_facenet.py can be compared to the 128-dimension feature vector file library.
+   If the test image in the database is to print the image name and identify the images to the database name and the distance of two images, scoring, and will display the two pictures, or print this picture is not in the database.

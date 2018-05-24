@@ -98,7 +98,7 @@ def detectFace(img_path,threshold,args):
     return rectangles
 
 def main(args):
-
+    data = dict()
     threshold = args.threshold
     sum,t = 0,0
     origin_start = time.time()
@@ -109,9 +109,11 @@ def main(args):
         if not(os.path.isdir(path1)):
             continue
         path = os.path.join(input_dir0, cls1)
+        ################################ save the detection face dir
         facenet_save_dir = os.path.join(args.save_dir, cls1)     
         if not os.path.isdir(facenet_save_dir):  
-            os.makedirs(facenet_save_dir)                    
+            os.makedirs(facenet_save_dir)
+        ###############################    
         faceimg_size = 67                                 
         d_idx = 0                                        
         for im_name in os.listdir(path):
@@ -130,20 +132,26 @@ def main(args):
             draw = img.copy()
             for rectangle in rectangles:
                 crop_img = draw[int(rectangle[1]):int(rectangle[3]), int(rectangle[0]):int(rectangle[2])]        
-                resized_im = cv2.resize(crop_img, (faceimg_size, faceimg_size), interpolation=cv2.INTER_LINEAR)  
-                save_file = os.path.join(facenet_save_dir, cls1+"_%s.jpg"%d_idx)                                       
-                cv2.imwrite(save_file, resized_im)                                                               
+                resized_im = cv2.resize(crop_img, (faceimg_size, faceimg_size), interpolation=cv2.INTER_LINEAR)
+                ################## save the detection face in dict
+                #save_img = cls1+'_'+str(d_idx)
+                #data[save_img] = resized_im
+                ###################   writer the detection face image
+                save_file = os.path.join(facenet_save_dir, cls1+"_%s.png"%d_idx)                   
+                cv2.imwrite(save_file, resized_im)
+                ###################
                 d_idx += 1                                                                                      
                 cv2.rectangle(draw,(int(rectangle[0]),int(rectangle[1])),(int(rectangle[2]),int(rectangle[3])),(0,255,0),2)
             if(len(rectangles)==0):
                 t+=1
             print ('online Recall : ', sum - t, sum)
-            #cv2.imshow("src-test",draw)
-            #cv2.waitKey(500)
+            # cv2.imshow("src-test",draw)
+            # cv2.waitKey(500)
     recall = float(sum - t)/float(sum)
     print ('Recall : ', sum - t, sum, recall)
     print ("sum_time: ", time.time() - origin_start, "s")
-
+    ################## return dict    
+    #return data
   
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
@@ -160,9 +168,9 @@ def parse_arguments(argv):
     parser.add_argument('--net_48_caffemodel', type=str,
                         help='int8 48net.caffemodel.', default='/mllib/ALG/quant_mtcnn/int8_48net.caffemodel')
     parser.add_argument('--data_dir', type=str,
-        help='Path to the data directory.',default='./test_per_data')
+                        help='Path to the data directory.',default='/mllib/ALG/facenet-tensorflow/jz_80val')
     parser.add_argument('--save_dir', type=str,
-        help='Path to save the data directory.',default='./test_per_data_67')
+                        help='save to the data directory.',default='./save_dir')
     parser.add_argument('--threshold', dest='threshold', help='list of threshold for pnet, rnet, onet', nargs="+", default=[0.8, 0.8, 0.8], type=float)
 
     return parser.parse_args(argv)

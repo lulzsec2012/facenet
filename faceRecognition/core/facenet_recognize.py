@@ -20,17 +20,14 @@ def dict2score(dist_target):
     score_target= f(dist_target)
     return score_target
 
-
-def getMinIndex(my_list):
-    min_index = []
-    flag = min(my_list)
+def getIndex(my_list,value):
+    index = []
     for i in enumerate(my_list):
-        if i[1]==flag:
-           min_index.append(i[0])
-    return min_index
+        if i[1] == value:
+           index.append(i[0])
+    return index
 
-def main(args):
-  
+def main(args):  
     lfw_paths = []
     input_dir0 = args.data_dir
     classes1 = os.listdir(input_dir0)
@@ -124,6 +121,8 @@ def main(args):
             emb_name = lfw_paths
             for i in xrange(nrof_batches):
                 name_path = lfw_paths[i]
+                test_name_ = name_path.split('/')
+                test_name_ = test_name_[-1].rstrip('.png')
                 batch_size = min(nrof_images-i*batch_size, batch_size)
                 pre_input, lab = sess.run([image_batch, labels_batch], feed_dict={batch_size_placeholder: batch_size})
                 g2 = tf.Graph()
@@ -161,6 +160,7 @@ def main(args):
                         embeddings = quant_sess.graph.get_tensor_by_name('l2_embeddings:0')
                         emb = quant_sess.run(embeddings, feed_dict={tf.get_default_graph().get_operation_by_name('l2_embeddings').inputs[0]:float_embeddings})
                         emb_all.append(emb)
+                        flag = 0
                         if args.pathways == 1:
                             print ('===========One test start==============')
                             save_txt = args.database + "/database.imdb"
@@ -173,15 +173,11 @@ def main(args):
                                  dist_list.append(dist)
                             min_dist = min(dist_list)
                             min_index = []
-                            min_index = getMinIndex(dist_list)
+                            min_index = getIndex(dist_list,min_dist)
                             for j in min_index:
                                 imgpath = data['emb_name'][j]
                                 file_name_ = data['emb_name'][j].split('/')
-                                file_name_ = file_name_[-1].rstrip('.jpg')
-                                
-                                test_name_ = name_path.split('/')
-                                test_name_ = test_name_[-1].rstrip('.jpg')
-                                flag = 0
+                                file_name_ = file_name_[-1].rstrip('.png')
                                 if min_dist < args.best_threshold:
                                     flag += 1
                                     print('The test %s is like %s on dist: %1.4f  ' %(test_name_,file_name_,min_dist))
@@ -192,8 +188,7 @@ def main(args):
                                     cv2.imshow("test", test_img)
                                     cv2.waitKey(0)
                             if flag == 0:
-                                print("The test one isn't exist database")
-                                
+                                print("The test %s isn't exist database"%test_name_)
                             print ('===========One test end================')
                         else:
                             pass
@@ -227,7 +222,7 @@ def parse_arguments(argv):
                         help='Upper bound on the amount of GPU memory that will be used by the process.', default=0.3)
     parser.add_argument('--data_dir', type=str,
         help='Path to the data directory containing aligned face patches. Multiple directories are separated with colon.',
-        default='/data/shwu/facenet_beijing/lzlu_faceDetectRec/test_per_data_67')
+        default='/mllib/ALG/facenet-tensorflow/jz_80val')
     parser.add_argument('--batch_size', type=int,
                         help='Number of images to process in a batch.', default=1)
     parser.add_argument('--image_size', type=int,
@@ -237,7 +232,7 @@ def parse_arguments(argv):
     parser.add_argument('--seed', type=int,
         help='Random seed.', default=666)
     parser.add_argument('--database', type=str,
-        help='Compare database.', default='./mtcnn_to_facenet_data_67_txt')
+        help='Compare database.', default='/mllib/ALG/facenet-tensorflow/jz_80val_mtcnn_to_facenet_128_imdb')
     parser.add_argument('--best_threshold', type=float,
                         help='Threshold to distinguish whether the same people.', default=0.9)
     parser.add_argument('--quant_model', type=str,
@@ -247,3 +242,5 @@ def parse_arguments(argv):
   
 if __name__ == '__main__':
     main(parse_arguments(sys.argv[1:]))
+
+    
