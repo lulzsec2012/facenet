@@ -11,8 +11,8 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
  
 if __name__ == "__main__":
-    argv = ['--logs_base_dir','/tmp/ydwu-facenet/creat-training-graph/result',
-            '--models_base_dir','/tmp/ydwu-facenet/creat-training-graph/result',
+    argv = ['--logs_base_dir','/tmp/lzlu-facenet/creat-training-graph/result',
+            '--models_base_dir','/tmp/lzlu-facenet/creat-training-graph/result',
             '--data_dir','/mllib/ALG/facenet-tensorflow/casia_noalgin_misc',
             '--pretrained_model','/mllib/ALG/facenet-tensorflow/mobilenet_model_bj/20170829-172716/model-20170829-172716.ckpt-194420', 
             '--model_def', 'src.models.mobilenet_fb',

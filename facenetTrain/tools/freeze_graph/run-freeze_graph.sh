@@ -3,11 +3,13 @@ echo "================================"
 echo "========= freeze_graph ========="
 echo "================================"
 
-CHECKPOINT_FILE_GRAPH=/home/ydwu/project/facenet/facenetTrain/facenet_eval_graph.pbtxt
+CHECKPOINT_FILE_GRAPH=/tmp/lzlu-facenet/creat-eval-graph/facenet_eval_graph.pbtxt
 
-CHECKPOINT=/tmp/ydwu-facenet/creat-training-graph/training-models/model-20180508-193523.ckpt-177839
+#CHECKPOINT=/tmp/lzlu-facenet/creat-training-graph/result/20180516-175949/model-20180516-175949.ckpt-9536
+CHECKPOINT=/tmp/lzlu-facenet/creat-training-graph/result/20180518-140509_max/model-20180518-140509.ckpt_valmax
+CHECKPOINT=/tmp/lzlu-facenet/creat-training-graph/result/20180523-192837_max/model-20180523-192837.ckpt_valmax
 
-RESULT_FILE=/home/ydwu/project/facenet/facenetTrain/tools/freeze_graph/frozen_eval_graph.pb
+RESULT_FILE=/tmp/lzlu-facenet/freeze_graph/frozen_eval_graph.pb
 OUTPUT=Bottleneck/act_quant/FakeQuantWithMinMaxVars
 
 CUDA_VISIBLE_DEVICES="" \

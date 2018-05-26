@@ -1,13 +1,14 @@
 
 
-INPUT_MODEL=/home/ydwu/project/facenet/facenetTrain/tools/freeze_graph/frozen_eval_graph.pb
+INPUT_MODEL=/tmp/lzlu-facenet/freeze_graph/frozen_eval_graph.pb
 
-OUTPUT_MODEL=/home/ydwu/project/facenet/facenetTrain/tools/transforms_graph/quantized_graph.pb
+OUTPUT_MODEL=/tmp/lzlu-facenet/transforms_graph/quantized_graph.pb
 
 echo "========================================================================================="
 echo "=============== Quantize to quantized_graph.pb ==============="
 echo "========================================================================================="
-/home/ydwu/framework/tensorflow1.8/bazel-bin/tensorflow/tools/graph_transforms/transform_graph \
+
+/home/lzlu/work/tensorflow_230/tensorflow/bazel-bin/tensorflow/tools/graph_transforms/transform_graph \
   --in_graph=${INPUT_MODEL} \
   --out_graph=${OUTPUT_MODEL} \
   --inputs=Placeholder \

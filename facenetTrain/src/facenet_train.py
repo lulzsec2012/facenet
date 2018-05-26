@@ -188,8 +188,9 @@ def main(args):
         # Build a Graph that trains the model with one batch of examples and updates the model parameters
         train_op = facenet.train(total_loss, global_step, args.optimizer, 
             learning_rate, args.moving_average_decay, tf.global_variables())
-
-        tf.contrib.quantize.create_training_graph(input_graph=g)#, quant_delay=2000)
+        
+        #tf.contrib.quantize.create_training_graph(input_graph=g,Ti_quant=True)#, quant_delay=2000)#Ti_quant=True
+        tf.contrib.quantize.experimental_create_training_graph(input_graph=g,activation_bits=4,weight_bits=8,quant_delay=2000)#, quant_delay=2000)#Ti_quant=True
         
         # Create a saver
         saver = tf.train.Saver(max_to_keep=3)

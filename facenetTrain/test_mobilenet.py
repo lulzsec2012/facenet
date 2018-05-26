@@ -29,7 +29,7 @@ if __name__ == "__main__":
             '--lfw_pairs','/data/shwu/facenet_beijing/lzlu_facenettrain/data_frombj/pairs.txt',
             '--lfw_dir','/data/shwu/facenet_beijing/lzlu_facenettrain/data_frombj/lfw_67',
             '--lfw_nrof_folds', '2',
-            '--quant_model','/home/ydwu/project/facenet/facenetTrain/tools/transforms_graph/quantized_graph.pb',
+            '--quant_model','/tmp/lzlu-facenet/transforms_graph/quantized_graph.pb',
             '--no_store_revision_info' ]
     print(argv)
     print("-----src.facenet_test.parse_arguments--------------")

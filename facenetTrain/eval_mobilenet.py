@@ -11,7 +11,7 @@ import src.facenet_eval as facenet_eval
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
-EVAL_GRAPH='/home/ydwu/project/facenet/facenetTrain/facenet_eval_graph.pbtxt'
+EVAL_GRAPH='/tmp/lzlu-facenet/creat-eval-graph/facenet_eval_graph.pbtxt'
 
 if __name__ == "__main__":
     argv = ['--model_def', 'src.models.mobilenet_fb',
